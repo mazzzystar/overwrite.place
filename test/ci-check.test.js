@@ -139,12 +139,16 @@ describe('who the pull request is from', () => {
     assert.match(out, /但发起这个 PR 的是 @mallory/);
   });
 
-  it('rejects the author whose artwork is currently on the wall', () => {
+  // Replacing your own artwork is deliberately allowed: a person may have
+  // several pictures in them, and if theirs held the wall through the whole
+  // cooldown then nobody else came and refusing would leave the wall stuck.
+  // Whether to do it is the human's call, asked for in SKILL.md — not CI's.
+  it('lets an author replace their own artwork once the cooldown has passed', () => {
     const branch = commitOn('selfie', () =>
       writeFileSync(resolve(repo, 'submissions/bob/three.json'), artwork('又是我', 4)));
     const { code, out } = run(['--author', 'bob', '--base', base, '--head', branch]);
-    assert.equal(code, 1, out);
-    assert.match(out, /不能自己替换自己/);
+    assert.equal(code, 0, out);
+    assert.match(out, /校验通过/);
   });
 });
 

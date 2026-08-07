@@ -11,18 +11,18 @@ the homepage.
 
 Two steps need credentials that no script here holds. Both are done once.
 
-**1. DNS for the custom domain.** The Pages project already claims
-`overwrite.place` and `www.overwrite.place`; they sit at `pending` until a DNS
-record exists. In the Cloudflare dashboard, either open **Workers & Pages →
-overwrite-place → Custom domains** and accept the DNS record it offers, or add
-them by hand under the `overwrite.place` zone:
+**1. DNS — done.** Both `overwrite.place` and `www.overwrite.place` resolve and
+serve. If either ever needs rebuilding, add a proxied CNAME to
+`overwrite-place.pages.dev` under the `overwrite.place` zone.
 
-| Type | Name | Target | Proxy |
-|---|---|---|---|
-| CNAME | `overwrite.place` | `overwrite-place.pages.dev` | Proxied |
-| CNAME | `www` | `overwrite-place.pages.dev` | Proxied |
+A machine that tried the domain *before* those records existed can cache the
+"does not exist" answer for a while, and then `dig` succeeds while `curl` and
+browsers fail — `dig` queries a resolver directly, everything else goes through
+the OS cache. On macOS:
 
-Certificates issue within a few minutes of the record appearing.
+```bash
+sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+```
 
 **2. The deploy credential.** `deploy.yml` needs an API token with exactly one
 permission — **Account → Cloudflare Pages → Edit**. Create it at *My Profile →
@@ -172,9 +172,10 @@ gh workflow run "merge queue" --repo mazzzystar/overwrite.place   # release one 
 ```
 
 If a pull request is stuck with `verified` but never merges, read the workflow
-run: the queue re-checks every rule immediately before merging, so an author who
-has since become ineligible (cooldown, or their own artwork went live in the
-meantime) gets pushed back with a comment rather than merged.
+run: the queue re-checks every rule immediately before merging, so an author
+who has since become ineligible — their cooldown restarted because another of
+their submissions merged first — gets pushed back with a comment rather than
+merged.
 
 ---
 

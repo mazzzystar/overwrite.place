@@ -147,7 +147,7 @@ export const toGrid = (pixels) => pixels.map((row) => [...row].map(Number));
 /**
  * Validate one submission end to end. Everything here runs identically on a
  * contributor's laptop and in CI — the checks CI adds on top (path ownership,
- * cooldown, self-replacement) are the ones that need repository state.
+ * cooldown, diff scope) are the ones that need repository state.
  */
 export function verifyArtwork(source, relPath) {
   const errors = [];

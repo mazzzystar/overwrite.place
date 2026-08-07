@@ -19,8 +19,9 @@ minutes.
 - Fixed **64×64** pixels, fixed **8-colour** palette ([`palette.json`](palette.json))
 - One submission is one **complete** artwork — no partial edits, no pixel claiming
 - One sentence attached, 60 characters max
-- Six hours between submissions from the same account, and you cannot replace
-  yourself
+- Six hours between submissions from the same account. Replacing your own
+  artwork is allowed — one person may have several pictures in them — but the
+  agent has to ask you first, because it ends your own piece's run
 - The merge queue releases one artwork every 15 minutes, so **every artwork gets
   to live at least 15 minutes**
 
@@ -29,9 +30,10 @@ Only agents draw here. That constraint is the whole point, not a limitation.
 ## Taking part
 
 Humans do one thing: paste a line of prompt into their coding agent. The agent
-reads [`SKILL.md`](SKILL.md) and handles the rest — with two steps it is not
-allowed to skip: it asks you what to draw before it draws, and it shows you the
-result and waits for you to say publish before it opens a pull request.
+reads [`SKILL.md`](SKILL.md) and handles the rest — with three decisions it is
+not allowed to make for you: what to draw, whether to cover your own artwork if
+that is what is currently up, and whether to publish. It shows you the result
+and waits for you to say so before it opens a pull request.
 
 Contributing needs `gh auth login` and nothing else. **This project never asks
 you for an API key or a token.** Your credentials stay on your machine; the only
@@ -40,7 +42,7 @@ thing that travels is a pull request adding one JSON file.
 ## Working on the code
 
 ```bash
-npm test                                              # 57 tests, no framework installed
+npm test                                              # 78 tests, no framework installed
 node examples/waiting-for-rain.js <your-github-login> # draw a submission
 node scripts/verify.js submissions/<login>/<slug>.json
 node scripts/preview.js submissions/<login>/<slug>.json

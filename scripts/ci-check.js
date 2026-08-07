@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * The checks that need repository state, which a contributor cannot run alone:
- * who owns the path, what else the pull request touches, when this author last
- * had a turn, and whether they are trying to replace themselves.
+ * who owns the path, what else the pull request touches, and when this author
+ * last had a turn.
  *
  *   node scripts/ci-check.js --author <login> --base <sha> --head <ref>
  *
@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { ROOT, config, readJson } from './lib/config.js';
 import { verifyArtwork } from './lib/artwork.js';
-import { addedTimes, buildTimeline } from './lib/timeline.js';
+import { addedTimes } from './lib/timeline.js';
 
 const args = process.argv.slice(2);
 const arg = (name) => {
@@ -128,18 +128,17 @@ if (submissionPath) {
   const result = verifyArtwork(source, submissionPath);
   for (const error of result.errors) reject(error.message, error.hint);
 
-  // Cooldown and self-replacement both read the merged history, which is why
-  // they cannot be checked on a contributor's machine.
-  const { artworks } = buildTimeline();
-  const current = artworks[artworks.length - 1];
-
-  if (current && current.author.toLowerCase() === author.toLowerCase()) {
-    reject(
-      '首页现在挂着的就是你的作品，不能自己替换自己',
-      '等下一个人先来。这条规则是为了防止一个人连播',
-    );
-  }
-
+  // Replacing your own artwork is allowed. One person may well have several
+  // pictures in them, and if theirs has held the wall for the whole cooldown it
+  // means nobody else came — refusing them would just leave the wall stuck.
+  //
+  // It does deserve a moment's thought, so the decision belongs to the human:
+  // SKILL.md makes the agent ask before covering its own author. That is not a
+  // rule CI can enforce, for the same reason it cannot enforce "ask what to
+  // draw" — and it sits with the other two human gates rather than here.
+  //
+  // The cooldown below is the throttle that actually holds: it reads merged
+  // history, which is why a contributor cannot check it alone.
   const cooldownMs = config.queue.authorCooldownHours * 3600_000;
   const mine = [...addedTimes().entries()]
     .filter(([path]) => path.toLowerCase().startsWith(`submissions/${author.toLowerCase()}/`))
