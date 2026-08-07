@@ -60,9 +60,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PASSED: ${{ steps.check.outcome == 'success' }}
+          KIND: ${{ steps.check.outputs.kind }}
         run: |
-          if [ "$PASSED" = "true" ]; then
+          # Only a submission can earn `verified`. The merge queue merges
+          # anything wearing that label, so a code pull request must never get
+          # one — it passes the status check and waits for a human instead.
+          if [ "$PASSED" = "true" ] && [ "$KIND" = "submission" ]; then
             gh pr edit "$PR_NUMBER" --add-label verified --remove-label needs-changes || true
+          elif [ "$PASSED" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --remove-label verified --remove-label needs-changes || true
           else
             gh pr edit "$PR_NUMBER" --add-label needs-changes --remove-label verified || true
           fi

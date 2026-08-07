@@ -13,7 +13,7 @@
  * Writes a markdown report to --report <path> and exits non-zero on rejection.
  */
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { ROOT, config, readJson } from './lib/config.js';
 import { verifyArtwork } from './lib/artwork.js';
 import { addedTimes, buildTimeline } from './lib/timeline.js';
@@ -50,25 +50,34 @@ const changes = git(['diff', '--name-status', `${base}...${head}`])
     return { status: status[0], path: rest[rest.length - 1] };
   });
 
+const touchesSubmissions = changes.some((change) => change.path.startsWith('submissions/'));
+
+// A pull request that changes code is a legitimate thing to open — it just is
+// not what this automated lane is for. It passes the status check so it is not
+// blocked, but it never earns the `verified` label, so the merge queue will
+// not pick it up and a person has to read it.
+const kind = touchesSubmissions ? 'submission' : 'code';
+
 let submissionPath = null;
 
 if (changes.length === 0) {
   reject('这个 PR 没有改动任何文件');
-} else if (changes.length > 1) {
-  reject(
-    `这个 PR 改动了 ${changes.length} 个文件，只允许新增 1 个`,
-    `改动的是：${changes.map((c) => c.path).join('、')}`,
-  );
-} else {
-  const [change] = changes;
-  if (change.status !== 'A') {
-    reject(`只允许新增文件，这个 PR 是 ${change.status === 'M' ? '修改' : '删除'} ${change.path}`,
-      '已经上线的作品不能改动——它已经有自己的存活时长了');
-  } else if (!change.path.startsWith('submissions/')) {
-    reject(`只允许在 submissions/ 下新增作品，这个 PR 动的是 ${change.path}`,
-      '改代码或工作流的 PR 需要维护者单独 review，不走这条自动通道');
+} else if (kind === 'submission') {
+  if (changes.length > 1) {
+    reject(
+      `这个 PR 改动了 ${changes.length} 个文件，一幅作品只能新增 1 个`,
+      `改动的是：${changes.map((c) => c.path).join('、')}。把代码改动拆成单独的 PR`,
+    );
   } else {
-    submissionPath = change.path;
+    const [change] = changes;
+    if (change.status !== 'A') {
+      reject(
+        `只允许新增文件，这个 PR 是${change.status === 'M' ? '修改' : '删除'} ${change.path}`,
+        '已经上线的作品不能改动——它已经有自己的存活时长了',
+      );
+    } else {
+      submissionPath = change.path;
+    }
   }
 }
 
@@ -124,7 +133,17 @@ if (submissionPath) {
 
 const passed = problems.length === 0;
 
-const report = passed
+const codeReport = [
+  '### 🛠 这是一个代码 PR',
+  '',
+  '它没有改动 `submissions/`，所以不会进入作品合并队列——维护者会单独 review。',
+  '',
+  '如果你本来是想提交一幅作品，那么它应该**只**新增一个 `submissions/<你的 login>/<slug>.json`。',
+].join('\n');
+
+const report = kind === 'code' && passed
+  ? codeReport
+  : passed
   ? [
       '### ✅ 校验通过',
       '',
@@ -147,5 +166,13 @@ const report = passed
     ].join('\n');
 
 if (reportPath) writeFileSync(reportPath, `${report}\n`);
+
+// The workflow reads `kind` to decide whether the `verified` label is even on
+// the table. Only a submission can earn it — the merge queue merges anything
+// carrying that label, so a code pull request must never be given one.
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(process.env.GITHUB_OUTPUT, `kind=${kind}\n`);
+}
+
 console.log(report);
 process.exit(passed ? 0 : 1);
