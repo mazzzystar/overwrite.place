@@ -316,7 +316,11 @@ write('_headers', [
   '  Cache-Control: public, max-age=600',
   '',
   '/data/*',
-  '  Cache-Control: public, max-age=60',
+  // Short, because this is what the homepage polls to notice a swap. Sixty
+  // seconds of cache on top of a sixty-second poll meant up to two minutes
+  // between an artwork going live and anyone seeing it — most of the total
+  // wait, and all of it dead time at the exact moment someone is watching.
+  '  Cache-Control: public, max-age=15',
   '',
   '/skill.md',
   // text/plain, not text/markdown: browsers download markdown rather than show

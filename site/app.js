@@ -401,7 +401,9 @@ function setup() {
   setInterval(loadQueue, 120_000);
 
   pollCurrent();
-  setInterval(pollCurrent, 60_000);
+  // Matched to the Cache-Control on data/*, so a poll that comes back stale is
+  // the exception rather than the rule.
+  setInterval(pollCurrent, 15_000);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
