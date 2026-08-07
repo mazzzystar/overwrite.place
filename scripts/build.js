@@ -319,7 +319,10 @@ write('_headers', [
   '  Cache-Control: public, max-age=60',
   '',
   '/skill.md',
-  '  Content-Type: text/markdown; charset=utf-8',
+  // text/plain, not text/markdown: browsers download markdown rather than show
+  // it, and the "怎么参与" section links a human straight at this file. Agents
+  // fetching it with curl do not care either way.
+  '  Content-Type: text/plain; charset=utf-8',
   '  Cache-Control: public, max-age=600',
   '',
 ].join('\n'));
