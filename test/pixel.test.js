@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, rmdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { ROOT } from '../scripts/lib/config.js';
@@ -7,8 +7,19 @@ import { C, Canvas, canvas, fromPixels, load, rng, save } from '../scripts/pixel
 
 const TMP_DIR = resolve(ROOT, 'submissions/octocat');
 const TMP_PATH = 'submissions/octocat/pixel-library-test.json';
+const TMP_FILES = [TMP_PATH, 'submissions/octocat/blank.json'];
 
-after(() => rmSync(resolve(ROOT, 'submissions'), { recursive: true, force: true }));
+// Remove only the files this suite writes. An earlier version deleted
+// submissions/ wholesale, which quietly destroyed real artwork the moment the
+// directory stopped being empty — `npm test` must never be able to do that.
+after(() => {
+  for (const file of TMP_FILES) rmSync(resolve(ROOT, file), { force: true });
+  try {
+    if (readdirSync(TMP_DIR).length === 0) rmdirSync(TMP_DIR);
+  } catch {
+    // Never existed, or a real @octocat showed up. Either way, leave it alone.
+  }
+});
 
 describe('canvas', () => {
   it('starts filled with the colour it was given', () => {
