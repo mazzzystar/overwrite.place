@@ -1,11 +1,24 @@
 name: merge queue
 
-# Releases at most one artwork every 15 minutes. That interval is the whole
-# reason the queue exists: without it, ten pull requests merging in the same
-# minute would give nine of them a lifespan of seconds.
+# The interval exists to protect the artwork already on the wall — without it,
+# ten pull requests landing in one minute would give nine of them a lifespan of
+# seconds. It is a floor under the *current* artwork's life, not a metronome.
+#
+# So this runs the moment a pull request is verified, and merges straight away
+# whenever the artwork up there has already had its fifteen minutes — which,
+# most of the time, it has by hours. Waiting for a clock tick when nobody is
+# being protected is just dead time.
+#
+# workflow_run rather than a `labeled` trigger: labels applied with GITHUB_TOKEN
+# raise no events, so this would never fire.
 
 on:
+  workflow_run:
+    workflows: [verify]
+    types: [completed]
   schedule:
+    # The backstop, for the case that is genuinely waiting: something merged
+    # minutes ago and the queue has to sit until its fifteen are up.
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
@@ -49,6 +62,23 @@ jobs:
           read -r NUMBER AUTHOR HEAD_SHA <<<"$(echo "$PR" | node -e "
             let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
               const p=JSON.parse(s);console.log(p.number,p.author.login,p.headRefOid);});")"
+
+          # Has the artwork on the wall had its fifteen minutes? If so, this one
+          # goes up now. If not, leave it labelled and let the cron come back —
+          # the only thing that wait buys is the guarantee we made to whoever is
+          # currently up there.
+          WAIT=$(node -e "
+            import('./scripts/lib/timeline.js').then(({ buildTimeline }) => {
+              const floorMs = require('./config.json').queue.mergeIntervalMinutes * 60000;
+              const live = buildTimeline().artworks.at(-1);
+              const upFor = live ? Date.now() - (live.aliveSince ?? live.bornAt) : Infinity;
+              console.log(Math.max(0, Math.ceil((floorMs - upFor) / 1000)));
+            });")
+
+          if [ "$WAIT" -gt 0 ]; then
+            echo "首页那幅还没活满保底时长，还差 ${WAIT} 秒。PR #${NUMBER} 留在队列里等下一次。" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           # The `verified` label was applied when the pull request was pushed,
           # which may have been hours ago, and main has moved since. Re-checking

@@ -69,10 +69,10 @@
     <div>
       <div class="kicker">Queue</div>
       <h2 class="section-title">正在排队的 <span id="queueCount">…</span> 幅</h2>
-      <p class="section-desc queue-desc">已通过 CI 校验、等待合并的 PR。队列每 <span class="merge-mins">15</span> 分钟放行一幅——这保证每幅画至少能活 <span class="merge-mins">15</span> 分钟。</p>
+      <p class="section-desc queue-desc">已通过 CI 校验、等待合并的 PR。校验一通过就会合并——除非首页那幅还没活满 <span class="merge-mins">15</span> 分钟，那就等它满。这是给每幅画的保底时长。</p>
     </div>
     <div class="merge-card">
-      <div class="merge-kicker">下一次合并</div>
+      <div class="merge-kicker">最快可合并</div>
       <div id="nextMerge" class="merge-time">--:--</div>
     </div>
   </div>
@@ -94,7 +94,7 @@
     <div class="step"><span class="step-no">01</span><div><b>它会先问你</b>想画什么，并把现在挂着的那幅讲给你听</div></div>
     <div class="step"><span class="step-no">02</span><div><b>它用代码画</b>一幅 64×64、8 色的作品，本地自检</div></div>
     <div class="step"><span class="step-no">03</span><div><b>它开一个本地预览</b>，左边是现在活着的，右边是你的草稿</div></div>
-    <div class="step"><span class="step-no">04</span><div><b>你说「发布」它才提 PR</b>，合并后立刻替换首页</div></div>
+    <div class="step"><span class="step-no">04</span><div><b>你说「发布」它才提 PR</b>，校验通过就合并、立刻替换首页</div></div>
   </div>
 
   <p class="draw-note">需要 <code>gh</code> 已登录，和 Node 18+。<b>这个项目永远不会向你索取任何 API key 或 token。</b>

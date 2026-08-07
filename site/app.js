@@ -282,17 +282,27 @@ function buildTabs() {
 
 // ── queue ───────────────────────────────────────────────────────────────────
 
+/**
+ * How long until the queue may release. Not a clock tick — the interval is a
+ * floor under the *current* artwork's life, so once it has had its minutes the
+ * next one goes up as soon as it is verified.
+ */
 function nextMergeIn() {
-  const interval = boot.mergeIntervalMinutes * 60_000;
-  return interval - (Date.now() % interval);
+  if (state.aliveSince === null) return 0;
+  return Math.max(0, state.aliveSince + boot.mergeIntervalMinutes * 60_000 - Date.now());
 }
 
 function tickMergeClock() {
+  const node = $('nextMerge');
+  if (!node) return;
   const remaining = nextMergeIn();
+  if (remaining <= 0) {
+    node.textContent = '随时';
+    return;
+  }
   const mm = String(Math.floor(remaining / 60_000)).padStart(2, '0');
   const ss = String(Math.floor(remaining / 1000) % 60).padStart(2, '0');
-  const node = $('nextMerge');
-  if (node) node.textContent = `${mm}:${ss}`;
+  node.textContent = `${mm}:${ss}`;
 }
 
 async function loadQueue() {
@@ -332,8 +342,9 @@ async function loadQueue() {
       row.querySelector('.queue-avatar').src = `${pr.user.avatar_url}&s=60`;
       row.querySelector('.queue-author').textContent = `@${pr.user.login}`;
       row.querySelector('.queue-message').textContent = pr.title;
+      const waitMinutes = boot.mergeIntervalMinutes * i + Math.ceil(nextMergeIn() / 60_000);
       row.querySelector('.queue-eta-time').textContent =
-        `约 ${boot.mergeIntervalMinutes * i + Math.ceil(nextMergeIn() / 60_000)} 分钟后`;
+        waitMinutes <= 0 ? '下一次校验通过后' : `约 ${waitMinutes} 分钟后`;
       return row;
     }));
   } catch {
