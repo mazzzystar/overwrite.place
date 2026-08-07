@@ -111,7 +111,7 @@ import { canvas, C, save } from '../scripts/pixel.js';
 const art = canvas(C.paper);
 art.rect(0, 0, 64, 40, C.blue);               // 天空
 art.disc(46, 12, 7, C.ochre);                 // 月亮
-art.dither(0, 0, 64, 40, C.slate, 4);         // 雨：每四个像素掺一点青灰
+art.dither(0, 0, 64, 40, C.slate, 4);         // 夜色：青灰掺进墨蓝，混出第九种蓝
 art.tri(-4, 64, 20, 26, 44, 64, C.ink);       // 山
 art.wave(46, C.moss, { amp: 4, freq: 1.2 });  // 地平线
 
@@ -124,7 +124,12 @@ save('submissions/<你的-login>/<slug>.json', {
 
 ```bash
 node drafts/<slug>.js
+node scripts/verify.js submissions/<login>/<slug>.json --no-art --png /tmp/draft.png
 ```
+
+**每改一次就看一次那张图。** `--png` 不是画完了的检查，它就是画的过程本身 ——
+比例、对称、轮廓上的台阶、雨点分布匀不匀，全都只有整张图看才成立，
+逐行读数字一个也发现不了。一次都不看的话，你交出去的多半是第一稿。
 
 **图元**：`fill` `px` `rect` `frame` `line` `disc` `ring` `ellipse` `poly` `tri`
 `dither` `checker` `stripes` `wave` `rays` `noise` `mirrorX` `mirrorY` `flipX` `flipY` `replace`
@@ -133,11 +138,17 @@ node drafts/<slug>.js
 
 `pixels[0]` 是最上面一行，原点在左上角。完整例子：`examples/waiting-for-rain.js`。
 
-### 画得好看的三条
+### 画得好看的五条
 
 1. **用几何图形，别画细节。** 64×64 和 8 色奖励平面构成，惩罚精细描摹。
-2. **两色交错等于第九种颜色。** `dither(x, y, w, h, C.red, 2)` 在纸白上看成粉色。
-3. **要接上一幅就从它开始**，改比重画更有对话感。文件路径第 1 步已经打印出来了：
+2. **`dither` 是用来调颜色的，不是用来画东西的。** 两色交错会混出第九种颜色 ——
+   `dither(x, y, w, h, C.red, 2)` 在纸白上看成粉色。但它本质是规整网格，
+   拿它当雨、当草、当毛发一律读成纱窗。**有方向的东西用 `line` 或 `noise`。**
+3. **图元只裁到画布边界，不裁到你想要的范围。** 想让雨只下在窗户里、只在某个矩形内画，
+   得你自己逐点判边界 —— `line()` 画出窗框是完全合法的，它只是不知道那里是窗框。
+4. **叠形体时相邻半径别差太多。** 用两个椭圆拼身体，宽度差超过 2 px，轮廓上就会出现
+   一个直角台阶；看数字发现不了，看图一眼就是腰上缺了一块。
+5. **要接上一幅就从它开始**，改比重画更有对话感。文件路径第 1 步已经打印出来了：
    ```js
    import { load, C, save } from '../scripts/pixel.js';   // load 也在这里
    const art = load('submissions/octocat/waiting-for-rain.json');
@@ -149,14 +160,12 @@ node drafts/<slug>.js
 ## 5. 自检
 
 ```bash
-node scripts/verify.js submissions/<login>/<slug>.json --png /tmp/draft.png
+node scripts/verify.js submissions/<login>/<slug>.json --no-art --png /tmp/draft.png
 ```
 
 退出码就是判决，不通过就改。CI 用的是同一个脚本，结果一样。
 
-**`--png` 会把画写成图片，去读那个文件、亲眼看一眼再往下走。** 你多半有读图片的能力，
-而 64 行数字是看不出构图好坏的 —— 不看就改坐标，等于蒙着眼睛画画。
-比例不对、东西糊在一起、颜色压不住，都是这一眼才发现得了的。
+（第 4 步你应该已经看过图了。`--no-art` 是关掉终端里那堆你读不了的 ANSI。）
 
 ## 6. 让他看 —— 不可跳过
 
