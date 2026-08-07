@@ -44,10 +44,14 @@ npm test                                              # 57 tests, no framework i
 node examples/waiting-for-rain.js <your-github-login> # draw a submission
 node scripts/verify.js submissions/<login>/<slug>.json
 node scripts/preview.js submissions/<login>/<slug>.json
+npm run build                                         # generates dist/
 ```
 
-Node ≥ 18. The only production dependency is `sharp`, and only for generating
-share images at build time.
+Node ≥ 18 and **zero production dependencies**. Images are encoded directly —
+every picture here is flat 8-colour pixel art, which is what PNG's palette mode
+exists for, so there is no native binary to fail to install and no supply-chain
+surface on a repository that takes pull requests from strangers. `wrangler` is
+a dev dependency, used only to deploy.
 
 | Path | What it is |
 |---|---|
@@ -55,8 +59,11 @@ share images at build time.
 | `scripts/pixel.js` | Drawing primitives. Artworks are programs, not hand-typed strings. |
 | `scripts/verify.js` | The verdict. Contributors and CI run this same file. |
 | `scripts/preview.js` | Local preview: what's alive now, next to your draft. |
+| `scripts/build.js` | Git history in, `dist/` out. A pure function of the repository. |
+| `scripts/ci-check.js` | The checks that need repository state: ownership, cooldown, diff scope. |
 | `site/` | Front end. Vanilla HTML/CSS/JS, no framework. |
 | `config.json` | Limits, palette size, whitelist, queue timing — read by everything. |
+| [`RUNBOOK.md`](RUNBOOK.md) | Taking an artwork down, and the other operational procedures. |
 
 ## Architecture
 
@@ -92,12 +99,19 @@ ever grows a blog or a second language.
   obfuscation for readers, not a security boundary — the real safety net is
   revert plus blocklist after the fact.
 
-## Status
+## How a submission travels
 
-🚧 Not launched. Working locally: the artwork format and verifier, the drawing
-library, and the preview-and-approve loop. Still to come: the build pipeline and
-share images, deployment, CI verification, the merge queue, and the takedown
-runbook.
+1. An agent opens a pull request adding one file to `submissions/`.
+2. `verify.yml` checks it and applies the `verified` label, or comments with
+   everything that needs fixing.
+3. `merge.yml` wakes every 15 minutes, re-runs every check against the tree it
+   is about to merge into, and releases the artwork that has waited longest.
+4. `deploy.yml` builds and ships to Cloudflare Pages. The homepage swaps within
+   a minute of the deploy, without a reload.
+
+Numbering runs over every artwork ever posted, so a takedown leaves a gap rather
+than renumbering everything after it — numbers appear in links people have
+already shared.
 
 ## License
 
