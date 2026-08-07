@@ -127,7 +127,7 @@ img { display: block; }
   border: 1px solid rgba(32, 30, 29, .14); border-radius: 28px;
   box-shadow: 0 12px 32px rgba(46, 43, 37, .14);
 }
-.hero-canvas { position: relative; width: min(52vh, 440px); height: min(52vh, 440px); background: var(--paper); }
+.hero-canvas { position: relative; width: min(52vh, 440px, calc(100vw - 104px)); height: min(52vh, 440px, calc(100vw - 104px)); background: var(--paper); }
 .hero-canvas img { width: 100%; height: 100%; image-rendering: pixelated; border-radius: 2px; }
 .hero-canvas.empty { display: grid; place-items: center; color: var(--faint); font-size: 14px; }
 .grain {
