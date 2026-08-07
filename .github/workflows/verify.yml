@@ -78,8 +78,11 @@ jobs:
           [ -f "$BODY_FILE" ] || echo "校验没能完成，见 Actions 日志。" > "$BODY_FILE"
           printf '\n<!-- overwrite-place-verify -->\n' >> "$BODY_FILE"
 
+          # Match on the author too. Anyone can comment on a public pull request,
+          # so a marker alone would let someone plant a comment that every later
+          # verification report gets written into, under their name.
           EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --jq 'map(select(.body | contains("overwrite-place-verify"))) | .[0].id // empty')
+            --jq 'map(select(.user.login == "github-actions[bot]" and (.body | contains("overwrite-place-verify")))) | .[0].id // empty')
 
           if [ -n "$EXISTING" ]; then
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING}" \

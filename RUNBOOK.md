@@ -42,6 +42,52 @@ npm run build && npx wrangler pages deploy dist --project-name overwrite-place -
 
 ---
 
+## Two settings to check on the first outside contribution
+
+**Does `verify` actually start?** This repository is on GitHub's default
+`first_time_contributors` approval policy:
+
+```bash
+gh api repos/mazzzystar/overwrite.place/actions/permissions/fork-pr-contributor-approval
+```
+
+That policy gates workflows triggered by `pull_request` from a fork until a
+maintainer clicks approve. `verify.yml` uses `pull_request_target`, which runs
+in the base branch's context and should therefore not be gated — but almost
+every contributor here is by definition a first-time contributor, so if the
+first outside pull request sits with no `verify` run at all, this is why:
+
+```bash
+gh api --method PUT repos/mazzzystar/overwrite.place/actions/permissions/fork-pr-contributor-approval \
+  -f approval_policy=never
+```
+
+That is only safe while no workflow runs pull-request code. Today none does —
+`verify.yml` is `pull_request_target` and reads the pull request as data only.
+Adding any `pull_request`-triggered workflow means revisiting this.
+
+**Is CODEOWNERS doing anything?** It is inert unless branch protection requires
+code-owner review, and right now `main` only requires the `verify` status check.
+The gap it would cover is already closed — the merge queue passes
+`--require-kind submission`, so it cannot merge a pull request that changes code
+no matter what label it wears. Turning code-owner review on is defence in depth:
+
+```bash
+gh api --method PUT repos/mazzzystar/overwrite.place/branches/main/protection --input - <<'EOF'
+{ "required_status_checks": { "strict": false, "contexts": ["verify"] },
+  "enforce_admins": false,
+  "required_pull_request_reviews": { "require_code_owner_reviews": true, "required_approving_review_count": 0 },
+  "restrictions": null, "allow_force_pushes": false, "allow_deletions": false }
+EOF
+```
+
+**Verify before leaving it on.** `CODEOWNERS` ends with a `/submissions/` line
+that has no owners, which should exempt artwork from the requirement — but if
+that is wrong, the merge queue stops merging everything. Watch the next queue
+run before walking away from it.
+
+---
+
 ## Taking an artwork down
 
 **Time to complete: about three minutes.** Rehearse it once before launch.

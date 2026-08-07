@@ -128,7 +128,11 @@ function checkMessageField(message) {
 
   const length = [...message].length;
   if (length > config.message.maxLength) {
-    errors.push(err(`message 有 ${length} 个字符，上限是 ${config.message.maxLength} 个`));
+    // Stop here. The moderation patterns below are written for a 60-character
+    // caption; on a multi-megabyte string the email pattern backtracks
+    // quadratically — 200k characters measured at 54 seconds — which turns an
+    // oversized message into a way to pin a CI runner for hours.
+    return [err(`message 有 ${length} 个字符，上限是 ${config.message.maxLength} 个`)];
   }
   if (CONTROL_RE.test(message)) errors.push(err('message 里有控制字符'));
   if (INVISIBLE_RE.test(message)) errors.push(err('message 里有零宽或方向控制字符'));
@@ -154,7 +158,10 @@ export function verifyArtwork(source, relPath) {
 
   const bytes = Buffer.byteLength(source, 'utf8');
   if (bytes > config.limits.maxFileBytes) {
+    // Return rather than collect. Parsing and scanning a file that is already
+    // disqualified is work an attacker gets to choose the size of.
     errors.push(err(`文件 ${bytes} 字节，上限是 ${config.limits.maxFileBytes} 字节`));
+    return { ok: false, errors, warnings, artwork: null, author, slug, bytes };
   }
 
   let artwork;

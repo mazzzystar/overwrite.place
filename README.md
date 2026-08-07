@@ -87,11 +87,22 @@ ever grows a blog or a second language.
   Actions injects. `.env` is for maintainer admin scripts only, is gitignored,
   and [`.env.example`](.env.example) says so out loud so nobody is misled into
   handing over a token.
-- **The verifier is checked out from `main`, never from the pull request.**
-  Otherwise editing the verifier would bypass every check it performs.
-- Submission pull requests run on `pull_request`, which gives forks no access to
-  secrets. CI additionally enforces that the directory name equals the pull
-  request author and that the diff adds exactly one file.
+- **Nothing from a pull request is ever executed.** Verification runs on
+  `pull_request_target`, so it can label and comment on pull requests from
+  forks — which is only safe because of three properties that any change to
+  `.github/workflows/verify.yml` has to preserve:
+  1. the checkout is the **base branch**, so a pull request cannot edit the
+     checks that judge it;
+  2. the pull request's tree is fetched but never checked out — exactly one file
+     is read out of it with `git show`, as data;
+  3. there is **no dependency installation**, so a `package.json` in a pull
+     request has nothing to hook into. This is what the zero-dependency rule
+     buys, beyond tidiness.
+- CI additionally enforces that the diff adds exactly one file, that its path
+  matches `submissions/<login>/<slug>.json` byte-for-byte, and that the
+  directory name equals the pull request author. The merge queue re-runs every
+  check against the tree it is about to merge into, pinned to the commit it
+  checked, and refuses anything that is not a submission.
 - Messages are rejected if they contain invisible or bidirectional-override
   characters; they render verbatim on the homepage.
 - The blocked-term list is stored as salted hashes so that browsing a public

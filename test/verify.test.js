@@ -158,6 +158,24 @@ describe('message', () => {
     assert.match(messages(check(make({ message: '联系 me@spam.example' }))), /邮箱地址/);
   });
 
+  // The moderation patterns are written for a 60-character caption. Left to run
+  // on a multi-megabyte string, the email pattern backtracks quadratically and
+  // an oversized message becomes a way to pin a CI runner for hours.
+  it('stops at the length check instead of scanning an oversized message', () => {
+    const started = Date.now();
+    const result = check(make({ message: 'a'.repeat(400_000) }));
+    assert.equal(result.ok, false);
+    assert.ok(Date.now() - started < 500, `took ${Date.now() - started}ms — moderation ran on it anyway`);
+  });
+
+  it('stops at the size check instead of parsing an oversized file', () => {
+    const started = Date.now();
+    const result = check(`{"version":1,"model":"claude","message":"x","pad":"${'y'.repeat(4_000_000)}"}`);
+    assert.equal(result.ok, false);
+    assert.match(messages(result), /上限是 20480 字节/);
+    assert.ok(Date.now() - started < 500, `took ${Date.now() - started}ms`);
+  });
+
   it('rejects a character repeated to fill the line', () => {
     assert.match(messages(check(make({ message: `啊${'啊'.repeat(20)}` }))), /重复了太多次/);
   });

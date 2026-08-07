@@ -55,10 +55,13 @@ jobs:
           # cannot-replace-yourself rule both depend on the state at merge time.
           git fetch --no-tags origin "+refs/pull/${NUMBER}/head:refs/remotes/pr/head"
 
+          # --require-kind is what stops this from merging a pull request that
+          # is carrying the label but no longer contains an artwork.
           if ! node scripts/ci-check.js \
                  --author "$AUTHOR" \
                  --base "$(git rev-parse HEAD)" \
                  --head refs/remotes/pr/head \
+                 --require-kind submission \
                  --report "$RUNNER_TEMP/recheck.md" >> "$GITHUB_STEP_SUMMARY"; then
             gh pr edit "$NUMBER" --remove-label verified --add-label needs-changes
             gh pr comment "$NUMBER" --body-file "$RUNNER_TEMP/recheck.md"

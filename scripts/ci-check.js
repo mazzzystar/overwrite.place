@@ -41,14 +41,35 @@ const reject = (message, hint) => problems.push({ message, hint });
 
 // ── what does this pull request touch? ──────────────────────────────────────
 
-const changes = git(['diff', '--name-status', `${base}...${head}`])
-  .split('\n')
-  .map((line) => line.trim())
-  .filter(Boolean)
-  .map((line) => {
-    const [status, ...rest] = line.split('\t');
-    return { status: status[0], path: rest[rest.length - 1] };
-  });
+/**
+ * -z, and no trimming anywhere.
+ *
+ * In the default output git leaves a path's trailing space intact but a naive
+ * `.trim()` removes it, so a pull request adding `…/one.json ` was checked as
+ * though it added `…/one.json` — reading the already-merged, already-valid file
+ * and never looking at the blob the pull request actually contained. Every
+ * check downstream then passed on the wrong bytes. NUL-delimited output has no
+ * ambiguity to clean up.
+ */
+function parseChanges(raw) {
+  const fields = raw.split('\0');
+  const changes = [];
+  for (let i = 0; i < fields.length; ) {
+    const status = fields[i++];
+    if (!status) break;
+    const from = fields[i++];
+    // Renames and copies carry both paths; the new one is what landed.
+    const to = /^[RC]/.test(status) ? fields[i++] : undefined;
+    changes.push({ status: status[0], path: to ?? from });
+  }
+  return changes;
+}
+
+const changes = parseChanges(git(['diff', '--name-status', '-z', `${base}...${head}`]));
+
+// Byte-exact. A path that merely looks like a submission is not one, and must
+// never be used to read a file or to decide who owns it.
+const SAFE_SUBMISSION_PATH = /^submissions\/[A-Za-z0-9-]{1,39}\/[a-z0-9-]{1,48}\.json$/;
 
 const touchesSubmissions = changes.some((change) => change.path.startsWith('submissions/'));
 
@@ -74,6 +95,11 @@ if (changes.length === 0) {
       reject(
         `只允许新增文件，这个 PR 是${change.status === 'M' ? '修改' : '删除'} ${change.path}`,
         '已经上线的作品不能改动——它已经有自己的存活时长了',
+      );
+    } else if (!SAFE_SUBMISSION_PATH.test(change.path)) {
+      reject(
+        `路径 ${JSON.stringify(change.path)} 不是一个合法的作品路径`,
+        '必须严格是 submissions/<你的 GitHub login>/<slug>.json —— 不能有空格、大写或其他字符',
       );
     } else {
       submissionPath = change.path;
@@ -127,6 +153,19 @@ if (submissionPath) {
       `还要等大约 ${Math.floor(waitMinutes / 60)} 小时 ${waitMinutes % 60} 分钟`,
     );
   }
+}
+
+// The merge queue passes --require-kind submission. Without it, a pull request
+// that changed only code would pass this script (nothing to check) and the
+// queue, which branches on the exit code alone, would merge it — so an attacker
+// who earned `verified` on an artwork and then force-pushed code into the same
+// pull request could land it in the window before the label was stripped.
+const requireKind = arg('require-kind');
+if (requireKind && kind !== requireKind) {
+  reject(
+    `这个 PR 不是作品提交（识别为 ${kind}），不能走自动合并通道`,
+    '改动代码的 PR 必须由维护者 review 后手动合并',
+  );
 }
 
 // ── report ──────────────────────────────────────────────────────────────────
