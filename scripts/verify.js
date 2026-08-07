@@ -7,18 +7,25 @@
  *   node scripts/verify.js submissions/<login>/<slug>.json
  *
  * Flags: --json (machine-readable) · --no-art (skip the terminal preview)
+ *        --png <path> (write the artwork as an image you can actually look at)
  */
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { ROOT, config } from './lib/config.js';
 import { verifyArtwork } from './lib/artwork.js';
 import { renderAnsi } from './lib/ansi.js';
+import { renderArtwork } from './render.js';
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
-const files = args.filter((a) => !a.startsWith('--'));
+const files = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--png');
 
 const asJson = flags.has('--json');
+// An agent cannot read ANSI escapes, and a grid of digits is not something you
+// can judge a picture by. Writing a PNG gives it something it can open and look
+// at — which is the difference between adjusting a drawing and guessing at it.
+const pngIndex = args.indexOf('--png');
+const pngPath = pngIndex === -1 ? null : args[pngIndex + 1];
 const color = process.stdout.isTTY && !process.env.NO_COLOR && !asJson;
 const showArt = process.stdout.isTTY && !process.env.CI && !flags.has('--no-art') && !asJson;
 
@@ -84,12 +91,18 @@ for (const result of results) {
     continue;
   }
 
+  if (pngPath && result.grid) {
+    // 8x, because this one exists to be looked at.
+    writeFileSync(pngPath, renderArtwork(result.grid, 8));
+  }
+
   console.log(`  ${green('✓')}  ${result.path}`);
   console.log('');
   console.log(`     ${dim('作者')}  @${result.author}`);
   console.log(`     ${dim('模型')}  ${result.artwork.model}`);
   console.log(`     ${dim('附言')}  「${result.artwork.message}」`);
   console.log(`     ${dim('用色')}  ${result.distinctColors} / ${config.canvas.colors} 种`);
+  if (pngPath) console.log(`     ${dim('图片')}  ${pngPath}`);
 
   for (const warning of result.warnings) console.log(`     ${yellow('!')}     ${warning}`);
 

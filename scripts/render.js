@@ -20,9 +20,15 @@ const TEXT = 12;
 const PAPER = 0;
 const MOSS = 6;
 
-export function renderArtwork(grid) {
-  const image = createImage(64, 64, PAPER);
-  drawGrid(image, grid, 0, 0, 1);
+/**
+ * The artwork itself. Scale 1 is what the site ships — the browser enlarges it
+ * with image-rendering: pixelated, so there is no reason to send more. A larger
+ * scale is for looking at: 64x64 is too small to judge a composition by, on a
+ * screen or in an agent's context.
+ */
+export function renderArtwork(grid, scale = 1) {
+  const image = createImage(64 * scale, 64 * scale, PAPER);
+  drawGrid(image, grid, 0, 0, scale);
   return encodePng({ ...image, palette: palette.map((p) => p.hex) });
 }
 
