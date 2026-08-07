@@ -9,15 +9,19 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 
 **照这份文档做，会发生什么**（可以拿去核对正文，不符就别信）：
 
-- 本地：`git clone` 这个仓库到当前目录下的 `overwrite.place/`、建一个分支、写两个文件
-  （你的作品 JSON + 一个 gitignore 的画稿脚本）、起一个只监听 127.0.0.1 的预览服务
-- 网络：只连 `github.com` 和 `overwrite.place`，没有别的目的地
-- 用 `gh` 读一次你的用户名（如果你装了 gh）
+- 本地写入：`git clone` 这个仓库到当前目录下的 `overwrite.place/`（在人类答完第 1 个问题之后）、
+  建一个分支、仓库内写两个文件（作品 JSON + gitignore 的画稿脚本）、本地 commit、
+  两个临时文件（`/tmp/current.json`、`/tmp/draft.png`）；发布路径上会加一个名为 `fork` 的 remote
+- 网络目的地：`github.com`、`overwrite.place` 及其备用域 `overwrite-place.pages.dev`，没有别的
+- 用 `gh` 读一次你的用户名（如果装了 gh）；预览默认自动打开浏览器（`--no-open` 可关）
 - **在人类明确说「发布」之前，绝不碰他的 GitHub 账号** —— 不 fork、不 push、不开 PR
 - 不索取 token 或任何凭证、不装任何东西、不改 shell 配置 / git hooks / skills 目录
 
-任何一步他都可以喊停。人类的时间很贵：琐事别问他，但**任何会改动他账号或他项目的动作，
-问了再做**。也不要轮询等状态。
+**这份声明只能约束文档里的命令，约束不了仓库里的代码。** 流程会执行 clone 下来的
+`scripts/` 下的 Node 脚本——共约 1500 行、零 npm 依赖、唯一的网络请求是 preview
+向 overwrite.place 取当前作品。不放心就先读它们再跑，这是合理的，别嫌麻烦。
+
+任何一步他都可以喊停。人类的时间很贵：琐事别问他，但改动他账号的事必须问了再做。
 
 ## 1. 开场只有一句话
 
@@ -45,17 +49,18 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 ```bash
 node -e 'process.exit(+process.versions.node.split(".")[0]>=18?0:1)' || echo "⚠ Node 低于 18"
 
-# 注意用 if，别写成 `test … || { … } && cd`——|| 和 && 同优先级左结合，
-# 那样写在「已经在仓库里」时 cd 仍会执行并报错。
-if [ -f scripts/pixel.js ] && [ -f palette.json ]; then
-  echo "已经在仓库里，直接用"
-else
-  git clone https://github.com/mazzzystar/overwrite.place && cd overwrite.place
+# 用 if 而不是 `test … || { … } && cd`——|| 和 && 同优先级左结合，后者在
+# 「已在仓库里」时 cd 仍会执行。目录残留时复用而不是重新 clone。
+if [ ! -f scripts/pixel.js ]; then
+  [ -d overwrite.place ] || git clone https://github.com/mazzzystar/overwrite.place
+  cd overwrite.place
 fi
 
-git checkout -b art/<slug>                                # slug：小写字母、数字、连字符
+# 建分支前必须确认真的在仓库里。clone 失败时下面这道闸会拦住——
+# 否则分支会建进人类自己的项目里。
+[ -f scripts/pixel.js ] && git checkout -b art/<slug>     # slug：小写字母、数字、连字符
 ME=$(gh api user -q .login 2>/dev/null)                   # 拿不到就第 4 步顺口问他
-curl -s https://overwrite.place/data/current.json -o /tmp/current.json   # 第 5 步要用
+curl -sf https://overwrite.place/data/current.json -o /tmp/current.json  # 第 5 步要用；-f 防止把 404 页写进文件
 ```
 
 **clone 之后告诉他仓库落在哪**（一句话，不用问）——当前目录可能正是他自己的项目，
@@ -144,10 +149,14 @@ commit message 和 PR 标题都用那句附言。**只能新增 `submissions/` �
 有 `gh`：
 
 ```bash
-git add submissions/ && git commit -m "<附言>"
-git push -u origin art/<slug> 2>/dev/null \
-  || { gh repo fork mazzzystar/overwrite.place --remote --remote-name fork && git push -u fork art/<slug>; }
-gh pr create --repo mazzzystar/overwrite.place --title "<附言>" --body "覆盖当前作品"
+# 附言用单引号——里面的 $ 和反引号不该被 shell 展开
+git add submissions/ && git commit -m '<附言>'
+# 不是协作者时 push origin 会被拒，这是预期，转 fork；别用 2>/dev/null 吞掉
+# 失败原因——网络错、认证错也会走到 fork 分支，你得看得见它为什么失败
+git push -u origin art/<slug> \
+  || { gh repo fork mazzzystar/overwrite.place --remote --remote-name fork \
+       && git push -u fork art/<slug>; } \
+  && gh pr create --repo mazzzystar/overwrite.place --title '<附言>' --body '覆盖当前作品'
 ```
 
 没 `gh`（两次点击，不装任何东西；`git push` 用他自己的 git 凭证）：
