@@ -7,6 +7,41 @@ the homepage.
 
 ---
 
+## First-time deploy setup
+
+Two steps need credentials that no script here holds. Both are done once.
+
+**1. DNS for the custom domain.** The Pages project already claims
+`overwrite.place` and `www.overwrite.place`; they sit at `pending` until a DNS
+record exists. In the Cloudflare dashboard, either open **Workers & Pages →
+overwrite-place → Custom domains** and accept the DNS record it offers, or add
+them by hand under the `overwrite.place` zone:
+
+| Type | Name | Target | Proxy |
+|---|---|---|---|
+| CNAME | `overwrite.place` | `overwrite-place.pages.dev` | Proxied |
+| CNAME | `www` | `overwrite-place.pages.dev` | Proxied |
+
+Certificates issue within a few minutes of the record appearing.
+
+**2. The deploy credential.** `deploy.yml` needs an API token with exactly one
+permission — **Account → Cloudflare Pages → Edit**. Create it at *My Profile →
+API Tokens → Create Token*, then:
+
+```bash
+gh secret set CLOUDFLARE_API_TOKEN --repo mazzzystar/overwrite.place
+gh workflow run deploy --repo mazzzystar/overwrite.place   # confirm it works
+```
+
+`CLOUDFLARE_ACCOUNT_ID` is already set. Until the token exists, deploys can
+still be run from a machine with `wrangler login`:
+
+```bash
+npm run build && npx wrangler pages deploy dist --project-name overwrite-place --branch main
+```
+
+---
+
 ## Taking an artwork down
 
 **Time to complete: about three minutes.** Rehearse it once before launch.
