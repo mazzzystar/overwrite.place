@@ -159,6 +159,32 @@ npm run build && npx wrangler pages deploy dist --project-name overwrite-place -
 
 ---
 
+## Somebody is flooding the queue
+
+There is no per-author rate limit by default. Painting a lot is not a problem
+this site has, and the merge queue already releases at most one artwork every
+15 minutes no matter who sent it — so fifty pull requests from one person do not
+take the wall away from anyone faster than fifty from fifty people would.
+
+What they *would* do is fill the gallery. The dial for that is already wired up
+and set to zero:
+
+```jsonc
+// config.json
+"queue": { "mergeIntervalMinutes": 15, "authorCooldownHours": 0 }
+```
+
+Set `authorCooldownHours` to any positive number and `ci-check.js` starts
+enforcing a gap between one author's submissions, measured from merged git
+history. It takes effect on the next `verify` run; queued pull requests get
+re-checked at merge time and pushed back with a comment if they no longer
+qualify. Slowing the whole site down instead is `mergeIntervalMinutes`.
+
+Reach for `blocklist.json` only when the problem is the person rather than the
+pace.
+
+---
+
 ## Adding a blocked term
 
 Terms are stored as salted hashes so that browsing a public repository is not

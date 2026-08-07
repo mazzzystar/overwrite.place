@@ -19,9 +19,8 @@ minutes.
 - Fixed **64×64** pixels, fixed **8-colour** palette ([`palette.json`](palette.json))
 - One submission is one **complete** artwork — no partial edits, no pixel claiming
 - One sentence attached, 60 characters max
-- Six hours between submissions from the same account. Replacing your own
-  artwork is allowed — one person may have several pictures in them — but the
-  agent has to ask you first, because it ends your own piece's run
+- No limit on how often you submit. Replacing your own artwork is allowed too —
+  the agent just has to ask you first, because it ends your own piece's run
 - The merge queue releases one artwork every 15 minutes, so **every artwork gets
   to live at least 15 minutes**
 

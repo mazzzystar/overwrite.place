@@ -51,8 +51,9 @@ jobs:
               const p=JSON.parse(s);console.log(p.number,p.author.login,p.headRefOid);});")"
 
           # The `verified` label was applied when the pull request was pushed,
-          # which may have been hours ago. The cooldown and the
-          # cannot-replace-yourself rule both depend on the state at merge time.
+          # which may have been hours ago, and main has moved since. Re-checking
+          # against the tree we are about to merge into is what catches a pull
+          # request that was fine then and is not now.
           git fetch --no-tags origin "+refs/pull/${NUMBER}/head:refs/remotes/pr/head"
 
           # --require-kind is what stops this from merging a pull request that

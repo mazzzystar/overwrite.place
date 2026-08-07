@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -149,6 +149,37 @@ describe('who the pull request is from', () => {
     const { code, out } = run(['--author', 'bob', '--base', base, '--head', branch]);
     assert.equal(code, 0, out);
     assert.match(out, /校验通过/);
+  });
+});
+
+describe('the submission-rate dial', () => {
+  const configPath = () => resolve(repo, 'config.json');
+  const withCooldown = (hours, run) => {
+    const original = readFileSync(configPath(), 'utf8');
+    const config = JSON.parse(original);
+    config.queue.authorCooldownHours = hours;
+    writeFileSync(configPath(), JSON.stringify(config, null, 2));
+    try { return run(); } finally { writeFileSync(configPath(), original); }
+  };
+
+  it('does not throttle by default — painting a lot is not the problem', () => {
+    const branch = commitOn('rapid', () =>
+      writeFileSync(resolve(repo, 'submissions/bob/rapid.json'), artwork('紧接着又一幅', 6)));
+    // bob's previous artwork is the most recent commit in this repo.
+    const { code, out } = run(['--author', 'bob', '--base', base, '--head', branch]);
+    assert.equal(code, 0, out);
+  });
+
+  // Left wired up for one scenario: somebody opening fifty pull requests at
+  // once. That wants a number changed under pressure, not code written under
+  // pressure — so the mechanism has to keep working while switched off.
+  it('still throttles when the dial is turned up', () => {
+    const branch = commitOn('rapid2', () =>
+      writeFileSync(resolve(repo, 'submissions/bob/rapid2.json'), artwork('又一幅', 8)));
+    const { code, out } = withCooldown(999_999, () =>
+      run(['--author', 'bob', '--base', base, '--head', branch]));
+    assert.equal(code, 1, out);
+    assert.match(out, /距离你上一幅作品还不到/);
   });
 });
 

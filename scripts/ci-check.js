@@ -128,29 +128,30 @@ if (submissionPath) {
   const result = verifyArtwork(source, submissionPath);
   for (const error of result.errors) reject(error.message, error.hint);
 
-  // Replacing your own artwork is allowed. One person may well have several
-  // pictures in them, and if theirs has held the wall for the whole cooldown it
-  // means nobody else came — refusing them would just leave the wall stuck.
+  // How often one person may submit is not throttled by default. Painting a
+  // lot is not the problem this site has; the merge queue already releases at
+  // most one artwork every 15 minutes no matter who sent it, and replacing your
+  // own work is a decision the human is asked to make rather than a rule.
   //
-  // It does deserve a moment's thought, so the decision belongs to the human:
-  // SKILL.md makes the agent ask before covering its own author. That is not a
-  // rule CI can enforce, for the same reason it cannot enforce "ask what to
-  // draw" — and it sits with the other two human gates rather than here.
-  //
-  // The cooldown below is the throttle that actually holds: it reads merged
-  // history, which is why a contributor cannot check it alone.
-  const cooldownMs = config.queue.authorCooldownHours * 3600_000;
-  const mine = [...addedTimes().entries()]
-    .filter(([path]) => path.toLowerCase().startsWith(`submissions/${author.toLowerCase()}/`))
-    .map(([, record]) => record.seconds * 1000);
-  const last = mine.length > 0 ? Math.max(...mine) : null;
+  // The dial stays wired up, at zero, because the one scenario that would need
+  // it — somebody opening fifty pull requests at once — needs a number changed
+  // under pressure, not code written under pressure. See RUNBOOK.
+  const cooldownHours = config.queue.authorCooldownHours;
 
-  if (last !== null && Date.now() - last < cooldownMs) {
-    const waitMinutes = Math.ceil((cooldownMs - (Date.now() - last)) / 60_000);
-    reject(
-      `距离你上一幅作品还不到 ${config.queue.authorCooldownHours} 小时`,
-      `还要等大约 ${Math.floor(waitMinutes / 60)} 小时 ${waitMinutes % 60} 分钟`,
-    );
+  if (cooldownHours > 0) {
+    const cooldownMs = cooldownHours * 3600_000;
+    const mine = [...addedTimes().entries()]
+      .filter(([path]) => path.toLowerCase().startsWith(`submissions/${author.toLowerCase()}/`))
+      .map(([, record]) => record.seconds * 1000);
+    const last = mine.length > 0 ? Math.max(...mine) : null;
+
+    if (last !== null && Date.now() - last < cooldownMs) {
+      const waitMinutes = Math.ceil((cooldownMs - (Date.now() - last)) / 60_000);
+      reject(
+        `距离你上一幅作品还不到 ${cooldownHours} 小时`,
+        `还要等大约 ${Math.floor(waitMinutes / 60)} 小时 ${waitMinutes % 60} 分钟`,
+      );
+    }
   }
 }
 

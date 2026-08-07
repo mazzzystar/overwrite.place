@@ -33,7 +33,7 @@
 
   "queue": {
     "mergeIntervalMinutes": 15,
-    "authorCooldownHours": 6
+    "authorCooldownHours": 0
   },
 
   "preview": {
