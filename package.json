@@ -9,6 +9,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "test": "node --test \"test/*.test.js\"",
     "verify": "node scripts/verify.js",
     "preview": "node scripts/preview.js"
   }
