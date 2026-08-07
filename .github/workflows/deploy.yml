@@ -17,6 +17,28 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # Fail here rather than after the build, and say what to do about it.
+      # wrangler's own message for a missing token explains the Cloudflare
+      # concept but not which secret this repository expects or why.
+      - name: Check the deploy credential is present
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then exit 0; fi
+          {
+            echo "### 部署凭证没配"
+            echo ""
+            echo "仓库 secret \`CLOUDFLARE_API_TOKEN\` 是空的，所以合并之后站点不会自动更新。"
+            echo ""
+            echo "1. Cloudflare → My Profile → API Tokens → Create Token → Custom token"
+            echo "2. 权限只给一条：**Account · Cloudflare Pages · Edit**"
+            echo "3. \`gh secret set CLOUDFLARE_API_TOKEN --repo $GITHUB_REPOSITORY\`"
+            echo ""
+            echo "在此之前，本地可以手动发：\`npm run build && npx wrangler pages deploy dist --project-name overwrite-place --branch main\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=CLOUDFLARE_API_TOKEN 未设置::合并后站点不会自动更新，配置步骤见本次运行的 Summary 或 RUNBOOK.md"
+          exit 1
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           # An artwork's moment of going up is the commit that added its file.

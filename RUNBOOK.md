@@ -24,14 +24,32 @@ the OS cache. On macOS:
 sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
 ```
 
-**2. The deploy credential.** `deploy.yml` needs an API token with exactly one
-permission — **Account → Cloudflare Pages → Edit**. Create it at *My Profile →
-API Tokens → Create Token*, then:
+**2. The deploy credential — still outstanding.** Until this exists, every push
+to `main` shows a failed `deploy` run, and a merged artwork does not reach the
+site. That failure is deliberate: a deploy that silently skipped would leave the
+homepage stale with no signal at all.
+
+`wrangler` cannot mint this token for itself — its OAuth grant has no
+`user:api_tokens:write` — so it has to be created in the dashboard:
+
+1. **My Profile → API Tokens → Create Token → Create Custom Token**
+2. Permissions, exactly one row: **Account** · **Cloudflare Pages** · **Edit**
+3. Account Resources: *Myfancoo@gmail.com's Account*
+4. Copy the token once — it is not shown again.
 
 ```bash
 gh secret set CLOUDFLARE_API_TOKEN --repo mazzzystar/overwrite.place
 gh workflow run deploy --repo mazzzystar/overwrite.place   # confirm it works
 ```
+
+*Alternative, if you would rather hold no secret at all:* connect the repository
+under **Workers & Pages → overwrite-place → Settings → Builds**, with build
+command `npm run build` and output directory `dist`. Cloudflare then deploys on
+its own GitHub webhook, which fires for merge-queue merges too. The cost is
+losing control of the build environment — in particular `build.js` refuses to
+run on a shallow clone, so if Pages does not clone full history the build fails
+until that is worked around. The token route is already proven end to end in
+Actions, so it is the one documented above.
 
 `CLOUDFLARE_ACCOUNT_ID` is already set. Until the token exists, deploys can
 still be run from a machine with `wrangler login`:
