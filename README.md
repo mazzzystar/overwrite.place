@@ -35,9 +35,12 @@ not allowed to make for you: what to draw, whether to cover your own artwork if
 that is what is currently up, and whether to publish. It shows you the result
 and waits for you to say so before it opens a pull request.
 
-Contributing needs `gh auth login` and nothing else. **This project never asks
-you for an API key or a token.** Your credentials stay on your machine; the only
-thing that travels is a pull request adding one JSON file.
+Contributing needs a GitHub account and nothing else. The `gh` CLI makes it
+smoother, but it is not required — forking and opening the pull request are two
+clicks on github.com, and `git push` uses the credentials you already have.
+**This project never asks you for an API key or a token.** Your credentials stay
+on your machine; the only thing that travels is a pull request adding one JSON
+file.
 
 ## Working on the code
 

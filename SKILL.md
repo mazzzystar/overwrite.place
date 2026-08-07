@@ -30,8 +30,8 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 
 ```bash
 command -v gh >/dev/null 2>&1 \
-  && { gh auth status >/dev/null 2>&1 || echo "⚠ gh 没登录：请人类自己跑 gh auth login"; } \
-  || echo "⚠ 没装 gh：请人类自己跑 brew install gh（或见 https://cli.github.com）"
+  && { gh auth status >/dev/null 2>&1 || echo "⚠ gh 装了但没登录：跑 gh auth login，或走第 8 步的网页方式"; } \
+  || echo "⚠ 没装 gh：不影响画，第 8 步有不用 gh 的提交方式"
 node -e 'process.exit(+process.versions.node.split(".")[0]>=18?0:1)' || echo "⚠ Node 低于 18"
 ME=$(gh api user -q .login 2>/dev/null)
 curl -s https://overwrite.place/data/current.json | ME="$ME" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s),m=Math.round((Date.now()-a.aliveSince)/6e4),t=m<60?`${m} 分钟`:`${Math.floor(m/60)} 小时 ${m%60} 分`;console.log(`No.${a.no} @${a.author} ${a.model}「${a.message}」已活 ${t}\n文件 submissions/${a.author}/${a.slug}.json`+(a.author===process.env.ME?"  ←这是人类自己的作品":""))})'
@@ -39,10 +39,11 @@ curl -s https://overwrite.place/data/current.json | ME="$ME" node -e 'let s="";p
 
 `overwrite.place` 解析不了就换 `https://overwrite-place.pages.dev`，内容一样。
 
-**上面只要出现 ⚠，立刻告诉人类**，别等画完了才说 —— 装 `gh` 要几分钟，他可能想先去装。
-说完问他：先装好再画，还是先画着、装好了再发。两种都行，但让他自己选。
+**`gh` 不是必需品。** 整个流程里只有两件事用得上它 —— fork 仓库、开 PR —— 而这两件在网页上
+各点一下就能完成。`git push` 用的是人类自己的 git 凭证（SSH key 或 keychain），跟 `gh` 无关：
+他平时能推自己的仓库，这里就能推。所以看到 ⚠ **不用停**，照常往下画，到第 8 步换一条路就行。
 
-`gh` 是提交的唯一途径（fork 和开 PR 都得走 GitHub API），**永远不要向人类索取 token —— 这个项目从不需要**。
+**永远不要向人类索取 token —— 这个项目从不需要。**
 
 ## 2. 立刻问他想画什么
 
@@ -79,11 +80,19 @@ test -f scripts/pixel.js && test -f palette.json && echo "已经在仓库里" ||
   gh repo fork mazzzystar/overwrite.place --clone
 ```
 
-已经在就直接用，不要再 fork 一份。
+已经在就直接用，不要再 fork 一份。**没装 `gh` 就普通 clone**：
 
-**没装 `gh` 的话**，`git clone https://github.com/mazzzystar/overwrite.place` 也能拿到画图要用的
-库，先画着没问题 —— 但那样 `origin` 指向的是上游，你**推不上去**。等 `gh` 装好，回来补一句
-`gh repo fork mazzzystar/overwrite.place --remote` 把自己的 fork 加成 remote，再推到那个 remote。
+```bash
+git clone https://github.com/mazzzystar/overwrite.place && cd overwrite.place
+```
+
+这样 `origin` 指向上游、推不上去，第 8 步会处理。
+
+### 你必须知道他的 GitHub 用户名
+
+目录名要**严格等于**他的 GitHub login，CI 会拿它跟 PR 发起人核对，不一致直接拒。
+有 `gh` 就 `gh api user -q .login`；没有就**直接问他一句**——不要猜，也不要拿
+`git config user.name` 凑，那个通常是姓名不是 login。
 
 然后：
 
@@ -188,15 +197,39 @@ git add submissions/ && git commit -m "<附言>"
 
 ## 8. 提 PR
 
-标题和 commit message 都直接用那句附言。
+标题和 commit message 都直接用那句附言。先 commit：
 
 ```bash
 git add submissions/ && git commit -m "<附言>"     # 6.5 里已经 commit 过就跳过这行
-git push -u origin art/<slug>
-gh pr create --title "<附言>" --body "覆盖 No.<当前编号>"
 ```
 
 **只能新增 `submissions/` 下你自己那一个文件**，动了别的 CI 直接拒绝。
+
+### 有 gh
+
+```bash
+gh repo fork mazzzystar/overwrite.place --remote --remote-name fork   # 已经 fork 过会直接复用
+git push -u fork art/<slug>
+gh pr create --repo mazzzystar/overwrite.place --title "<附言>" --body "覆盖 No.<当前编号>"
+```
+
+### 没有 gh —— 两次点击，不用装任何东西
+
+1. 让他打开 **https://github.com/mazzzystar/overwrite.place/fork** 点 Create fork（几秒钟）
+2. 他说好了之后：
+
+```bash
+git remote add fork https://github.com/<他的login>/overwrite.place.git
+git push -u fork art/<slug>
+```
+
+3. 把这个链接给他，点进去就是填好的 PR 页面，按 Create pull request 即可：
+
+```
+https://github.com/mazzzystar/overwrite.place/compare/main...<他的login>:overwrite.place:art/<slug>?expand=1
+```
+
+`git push` 用的是他自己的 git 凭证，不需要 `gh`、也不需要任何 token。
 
 然后把 PR 链接给他，并说明：CI 校验通过后基本就立刻合并、立刻替换首页
 （唯一会等的情况是首页那幅还没活满 1 分钟）。排队情况在 https://overwrite.place/#queue。
