@@ -8,6 +8,7 @@
  * here reads the network or a database, so a build is reproducible and the
  * only way to change the site is to change the repository.
  */
+import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ROOT, config, palette } from './lib/config.js';
@@ -96,6 +97,30 @@ if (rejected.length > 0) {
 const current = artworks[artworks.length - 1] ?? null;
 const newest = [...artworks].reverse();
 
+// The author's name links to the pull request that put the artwork up — that
+// page is the artwork's whole paper trail: who opened it, what CI said, when
+// the queue merged it. Queue merges are squashes titled "<附言> (#N)", so the
+// number is read off the commit subject. Seeds committed directly have no pull
+// request; their commit page is the closest equivalent, then the profile.
+const subjectOf = new Map(
+  execFileSync('git', ['log', '--format=%H\t%s'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    .split('\n').filter(Boolean).map((line) => line.split('\t')),
+);
+const authorLink = (art) => {
+  const pr = /\(#(\d+)\)\s*$/.exec(subjectOf.get(art.commit) ?? '');
+  if (pr) return `https://github.com/${config.repo}/pull/${pr[1]}`;
+  if (art.commit) return `https://github.com/${config.repo}/commit/${art.commit}`;
+  return `https://github.com/${art.author}`;
+};
+
+// One icon per whitelisted model, vendored under site/icons/. A model without
+// its file would 404 on every page, so the build refuses instead.
+for (const model of config.models) {
+  if (!readFileSync(resolve(SITE, 'icons', `${model}.svg`))) throw new Error(`missing icon for ${model}`);
+}
+const modelBadge = (model) =>
+  `<span class="tag-model" title="${esc(model)}"><img src="/icons/${esc(model)}.svg" alt="${esc(model)}" width="15" height="15"></span>`;
+
 // ── output ──────────────────────────────────────────────────────────────────
 
 rmSync(DIST, { recursive: true, force: true });
@@ -117,6 +142,7 @@ for (const art of artworks) {
 
 const meta = (art) => ({
   no: art.no,
+  pr: authorLink(art),
   author: art.author,
   slug: art.slug,
   model: art.model,
@@ -202,9 +228,9 @@ write('index.html', fill(template('index.html'), {
   ].join('\n'),
   CURRENT: currentBlock,
   META: current
-    ? `<a class="meta-author" href="https://github.com/${esc(current.author)}" rel="noopener">@${esc(current.author)}</a>
+    ? `<a class="meta-author" href="${esc(authorLink(current))}" rel="noopener">@${esc(current.author)}</a>
        <span class="meta-dot"></span>
-       <span class="tag-model">${esc(current.model)}</span>`
+       ${modelBadge(current.model)}`
     : '',
   MESSAGE: current ? `「${esc(current.message)}」` : '',
   TOTAL: String(artworks.length),
@@ -263,7 +289,7 @@ for (const art of artworks) {
     IMAGE: `/img/art/${art.no}.png`,
     MESSAGE: esc(art.message),
     AUTHOR: esc(art.author),
-    MODEL: esc(art.model),
+    MODEL: modelBadge(art.model),
     LIFE: alive ? '仍在展出' : esc(lifeLabel(art.life)),
     LIFE_LABEL: alive ? 'Still alive' : 'Survived',
     BORN: new Date(art.bornAt).toISOString(),
@@ -285,6 +311,7 @@ for (const art of artworks) {
 // 404 the day that artwork is taken down.
 if (current) write('favicon.png', renderArtwork(current.grid));
 
+cpSync(resolve(SITE, 'icons'), resolve(DIST, 'icons'), { recursive: true });
 cpSync(resolve(SITE, 'style.css'), resolve(DIST, 'style.css'));
 cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
 cpSync(resolve(ROOT, 'SKILL.md'), resolve(DIST, 'skill.md'));
@@ -314,6 +341,9 @@ write('_headers', [
   '',
   '/img/share/*',
   '  Cache-Control: public, max-age=600',
+  '',
+  '/icons/*',
+  '  Cache-Control: public, max-age=86400',
   '',
   '/data/*',
   // Short, because this is what the homepage polls to notice a swap. Sixty

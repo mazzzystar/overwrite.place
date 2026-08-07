@@ -75,8 +75,8 @@ img { display: block; }
   background: transparent; border: 1px solid transparent;
   padding: 8.8px 15.8px; border-radius: 999px;
 }
-.btn-primary { background: var(--color-accent); color: var(--paper); }
-.btn-primary:hover { background: var(--color-accent-600); color: var(--paper); }
+.btn-primary { background: var(--color-accent); color: var(--ink); }
+.btn-primary:hover { background: var(--color-accent-600); color: var(--ink); }
 .btn-secondary { border-color: var(--color-divider); }
 .btn-secondary:hover { background: rgba(32, 30, 29, .07); color: var(--color-text); }
 
@@ -97,7 +97,7 @@ img { display: block; }
 .nav-links a { color: var(--color-text); text-decoration: none; }
 .nav-links a:hover { color: var(--color-accent-600); }
 .nav-cta { font-size: 12px; padding: 7px 14px; }
-.nav-cta:hover { color: var(--paper); }
+.nav-cta:hover { color: var(--ink); }
 
 /* — obituary toast — */
 .toast {
@@ -147,10 +147,15 @@ img { display: block; }
 .meta-author:hover { color: var(--color-accent-700); }
 .meta-dot { width: 3px; height: 3px; border-radius: 999px; background: #b5aa9a; }
 .tag-model {
-  padding: 3px 10px; border-radius: 999px;
+  display: inline-flex; align-items: center;
+  padding: 4px 9px; border-radius: 999px;
   background: var(--color-accent-2-200); color: var(--color-accent-2-800);
   font-family: var(--font-body); font-size: 11px; letter-spacing: .04em;
 }
+.tag-model img { width: 15px; height: 15px; display: block; }
+
+/* 复制按钮的点击反馈：绿底黑字，1.6 秒后弹回 */
+.btn-copied { background: #7a8a5e !important; color: var(--ink) !important; border-color: #7a8a5e !important; }
 
 .message {
   margin-top: 14px; font-family: var(--font-serif); font-size: 17px;

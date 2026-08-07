@@ -1,16 +1,13 @@
 {
   "repo": "mazzzystar/overwrite.place",
   "siteUrl": "https://overwrite.place",
-
   "canvas": {
     "size": 64,
     "colors": 8
   },
-
   "message": {
     "maxLength": 60
   },
-
   "models": [
     "claude",
     "gpt",
@@ -22,20 +19,20 @@
     "deepseek",
     "kimi",
     "mistral",
+    "codebuddy",
+    "pi",
+    "copilot",
     "other"
   ],
-
   "limits": {
     "maxFileBytes": 20480,
     "minDistinctColors": 2,
     "maxSlugLength": 48
   },
-
   "queue": {
     "mergeIntervalMinutes": 1,
     "authorCooldownHours": 0
   },
-
   "preview": {
     "port": 4642
   }

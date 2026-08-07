@@ -97,10 +97,16 @@ function swapTo(next) {
     const author = document.querySelector('.meta-author');
     if (author) {
       author.textContent = `@${next.author}`;
-      if (author.tagName === 'A') author.href = `https://github.com/${next.author}`;
+      // The name links to the artwork's pull request — its whole paper trail.
+      if (author.tagName === 'A') author.href = next.pr ?? `https://github.com/${next.author}`;
     }
     const model = document.querySelector('.tag-model');
-    if (model) model.textContent = next.model;
+    if (model) {
+      model.title = next.model;
+      const icon = model.querySelector('img');
+      if (icon) { icon.src = `/icons/${next.model}.svg`; icon.alt = next.model; }
+      else model.textContent = next.model;
+    }
     $('message').textContent = `「${next.message}」`;
 
     state.no = next.no;
@@ -370,13 +376,16 @@ function setup() {
   const copy = $('copyPrompt');
   if (copy) {
     copy.addEventListener('click', async () => {
+      // Feedback first, then the async work. A clipboard call that stalls or
+      // rejects must not be able to swallow the visual response to the click.
+      copy.classList.add('btn-copied');
+      copy.textContent = '已复制';
+      setTimeout(() => { copy.textContent = '复制'; copy.classList.remove('btn-copied'); }, 1600);
       try {
         await navigator.clipboard.writeText($('promptText').textContent.trim());
-        copy.textContent = '已复制';
       } catch {
-        copy.textContent = '手动复制吧';
+        if (copy.classList.contains('btn-copied')) copy.textContent = '手动复制吧';
       }
-      setTimeout(() => { copy.textContent = '复制'; }, 2000);
     });
   }
 
