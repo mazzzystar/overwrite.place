@@ -32,7 +32,7 @@
   },
 
   "queue": {
-    "mergeIntervalMinutes": 15,
+    "mergeIntervalMinutes": 1,
     "authorCooldownHours": 0
   },
 

@@ -1,13 +1,14 @@
 name: merge queue
 
-# The interval exists to protect the artwork already on the wall — without it,
-# ten pull requests landing in one minute would give nine of them a lifespan of
-# seconds. It is a floor under the *current* artwork's life, not a metronome.
+# The interval is a floor under the *current* artwork's life, not a metronome:
+# without one, ten pull requests landing together would give nine of them a
+# lifespan of seconds. It is deliberately short — a minute — because verifying
+# a pull request already takes longer than that, so in practice the floor is
+# almost always met by the time anything is ready to merge.
 #
-# So this runs the moment a pull request is verified, and merges straight away
-# whenever the artwork up there has already had its fifteen minutes — which,
-# most of the time, it has by hours. Waiting for a clock tick when nobody is
-# being protected is just dead time.
+# This runs the moment a pull request is verified and merges straight away when
+# the floor is met. Waiting for a clock tick while nobody is being protected is
+# just dead time.
 #
 # workflow_run rather than a `labeled` trigger: labels applied with GITHUB_TOKEN
 # raise no events, so this would never fire.
@@ -17,9 +18,11 @@ on:
     workflows: [verify]
     types: [completed]
   schedule:
-    # The backstop, for the case that is genuinely waiting: something merged
-    # minutes ago and the queue has to sit until its fifteen are up.
-    - cron: '*/15 * * * *'
+    # Backstop only, for the one case workflow_run cannot cover: a pull request
+    # verified while the floor was still unmet, with no other verify run behind
+    # it to wake the queue again. Five minutes is as fine-grained as GitHub cron
+    # goes.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -63,10 +66,9 @@ jobs:
             let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
               const p=JSON.parse(s);console.log(p.number,p.author.login,p.headRefOid);});")"
 
-          # Has the artwork on the wall had its fifteen minutes? If so, this one
-          # goes up now. If not, leave it labelled and let the cron come back —
-          # the only thing that wait buys is the guarantee we made to whoever is
-          # currently up there.
+          # Has the artwork on the wall had its minute? If so, this one goes up
+          # now. If not, leave it labelled and let the cron come back — the only
+          # thing that wait buys is the guarantee made to whoever is up there.
           WAIT=$(node -e "
             import('./scripts/lib/timeline.js').then(({ buildTimeline }) => {
               const floorMs = require('./config.json').queue.mergeIntervalMinutes * 60000;

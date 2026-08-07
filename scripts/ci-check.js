@@ -128,10 +128,9 @@ if (submissionPath) {
   const result = verifyArtwork(source, submissionPath);
   for (const error of result.errors) reject(error.message, error.hint);
 
-  // How often one person may submit is not throttled by default. Painting a
-  // lot is not the problem this site has; the merge queue already releases at
-  // most one artwork every 15 minutes no matter who sent it, and replacing your
-  // own work is a decision the human is asked to make rather than a rule.
+  // How often one person may submit is not throttled by default. Painting a lot
+  // is not the problem this site has, and replacing your own work is a decision
+  // the human is asked to make rather than a rule.
   //
   // The dial stays wired up, at zero, because the one scenario that would need
   // it — somebody opening fifty pull requests at once — needs a number changed
@@ -188,8 +187,8 @@ const report = kind === 'code' && passed
       '',
       `\`${submissionPath}\` 已进入合并队列。`,
       '',
-      `队列每 ${config.queue.mergeIntervalMinutes} 分钟放行一幅，排位见 [队列页](${config.siteUrl}/#queue)。`,
-      '合并后你的作品会立刻替换首页，然后开始计时。',
+      `校验通过就会合并 —— 除非首页那幅还没活满 ${config.queue.mergeIntervalMinutes} 分钟，那就等它满。`,
+      `排队情况见 [队列页](${config.siteUrl}/#queue)。合并后立刻替换首页，然后开始计时。`,
     ].join('\n')
   : [
       '### ❌ 还不能合并',
