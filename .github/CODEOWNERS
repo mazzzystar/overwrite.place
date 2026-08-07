@@ -1,0 +1,19 @@
+# Everything except submissions/ needs the maintainer's review.
+#
+# The automated path exists for artwork only. A pull request that touches the
+# verifier, the build, or these workflows is a pull request that could change
+# what the checks accept — those get read by a person.
+
+*                   @mazzzystar
+/scripts/           @mazzzystar
+/.github/           @mazzzystar
+/site/              @mazzzystar
+/config.json        @mazzzystar
+/palette.json       @mazzzystar
+/blocklist.json     @mazzzystar
+/moderation.json    @mazzzystar
+/package.json       @mazzzystar
+/package-lock.json  @mazzzystar
+
+# Artwork is the one thing CI is allowed to merge on its own.
+/submissions/

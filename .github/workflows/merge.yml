@@ -1,0 +1,75 @@
+name: merge queue
+
+# Releases at most one artwork every 15 minutes. That interval is the whole
+# reason the queue exists: without it, ten pull requests merging in the same
+# minute would give nine of them a lifespan of seconds.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: merge-queue
+  cancel-in-progress: false
+
+jobs:
+  release-one:
+    runs-on: ubuntu-latest
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Merge the artwork that has waited longest
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "merged=false" >> "$GITHUB_OUTPUT"
+
+          PR=$(gh pr list --state open --label verified --json number,createdAt,headRefOid,author,isDraft \
+                 --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | .[0] // empty')
+          if [ -z "$PR" ]; then
+            echo "队列是空的。" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          NUMBER=$(echo "$PR" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).number))")
+          AUTHOR=$(echo "$PR" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).author.login))")
+
+          # The `verified` label was applied when the pull request was pushed,
+          # which may have been hours ago. The cooldown and the
+          # cannot-replace-yourself rule are both time- and state-dependent, so
+          # they are re-checked here against the tree we are about to merge into.
+          git fetch --no-tags origin "+refs/pull/${NUMBER}/head:refs/remotes/pr/head"
+
+          if ! node scripts/ci-check.js \
+                 --author "$AUTHOR" \
+                 --base "$(git rev-parse HEAD)" \
+                 --head refs/remotes/pr/head \
+                 --report "$RUNNER_TEMP/recheck.md" >> "$GITHUB_STEP_SUMMARY"; then
+            gh pr edit "$NUMBER" --remove-label verified --add-label needs-changes
+            gh pr comment "$NUMBER" --body-file "$RUNNER_TEMP/recheck.md"
+            echo "PR #${NUMBER} 在合并前复检没通过，已退回队列。" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          gh pr merge "$NUMBER" --squash --delete-branch
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+          echo "已合并 PR #${NUMBER}（@${AUTHOR}）。" >> "$GITHUB_STEP_SUMMARY"
+
+  # A merge made with GITHUB_TOKEN does not raise a push event, so the deploy
+  # has to be called rather than waited for.
+  deploy:
+    needs: release-one
+    if: needs.release-one.outputs.merged == 'true'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

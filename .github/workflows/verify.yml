@@ -1,0 +1,83 @@
+name: verify
+
+# pull_request_target runs with the base repository's permissions, which is what
+# lets this label and comment on pull requests from forks. That is only safe
+# because nothing from the pull request is ever executed here:
+#
+#   - the checkout is the BASE branch, so scripts/ is the reviewed version and a
+#     pull request cannot edit the checks that judge it
+#   - the pull request's tree is fetched, but only one file is read out of it,
+#     with `git show`, as data
+#   - there is no `npm install` — the verifier has zero dependencies, so a
+#     package.json in the pull request has nothing to hook into
+#
+# Adding any step that runs code from the pull request would break all of this.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the base branch, not the pull request
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          # Lifespans and the cooldown check are read from git history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the pull request tree as data
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
+
+      - name: Check the submission
+        id: check
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          node scripts/ci-check.js \
+            --author "$PR_AUTHOR" \
+            --base "$BASE_SHA" \
+            --head refs/remotes/pr/head \
+            --report "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Label and report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PASSED: ${{ steps.check.outcome == 'success' }}
+        run: |
+          if [ "$PASSED" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --add-label verified --remove-label needs-changes || true
+          else
+            gh pr edit "$PR_NUMBER" --add-label needs-changes --remove-label verified || true
+          fi
+
+          # One rolling comment rather than a new one per push.
+          BODY_FILE="$RUNNER_TEMP/report.md"
+          [ -f "$BODY_FILE" ] || echo "校验没能完成，见 Actions 日志。" > "$BODY_FILE"
+          printf '\n<!-- overwrite-place-verify -->\n' >> "$BODY_FILE"
+
+          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq 'map(select(.body | contains("overwrite-place-verify"))) | .[0].id // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING}" \
+              -F body=@"$BODY_FILE" > /dev/null
+          else
+            gh pr comment "$PR_NUMBER" --body-file "$BODY_FILE"
+          fi
