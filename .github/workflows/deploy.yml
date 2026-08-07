@@ -41,6 +41,14 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          # main's tip, explicitly — not the triggering commit.
+          #
+          # The merge queue calls this workflow after merging, and in a
+          # workflow_call the context SHA is still whatever it was when the
+          # queue started, i.e. the commit *before* the merge. Checking that out
+          # rebuilt and republished the previous state: the artwork that had
+          # just merged would not appear until some later deploy happened to run.
+          ref: main
           # An artwork's moment of going up is the commit that added its file.
           # Without full history the build has no timeline at all, so it refuses
           # to run rather than publish a site where nothing ever lived.
