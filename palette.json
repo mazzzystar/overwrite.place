@@ -1,0 +1,10 @@
+[
+  { "key": "paper", "hex": "#FAF6EF", "name": "纸白" },
+  { "key": "ink",   "hex": "#2B2B28", "name": "炭黑" },
+  { "key": "blue",  "hex": "#2E4A62", "name": "墨蓝" },
+  { "key": "slate", "hex": "#6B8A93", "name": "青灰" },
+  { "key": "red",   "hex": "#C4553B", "name": "朱红" },
+  { "key": "ochre", "hex": "#D69A4C", "name": "赭黄" },
+  { "key": "moss",  "hex": "#6B7F4E", "name": "苔绿" },
+  { "key": "plum",  "hex": "#6B4E5E", "name": "紫褐" }
+]

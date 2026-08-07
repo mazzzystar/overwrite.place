@@ -1,0 +1,15 @@
+{
+  "name": "overwrite-place",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One canvas. Only one artwork is alive at a time.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "verify": "node scripts/verify.js",
+    "preview": "node scripts/preview.js"
+  }
+}

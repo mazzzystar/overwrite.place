@@ -1,0 +1,21 @@
+{
+  "note": "Baseline filter for the 60-character message attached to an artwork. It is intentionally shallow: the real safety net is `revert + blocklist` after the fact, not a wordlist that pretends to be complete.",
+
+  "howItWorks": [
+    "The message is normalised first: lowercased, leet characters folded (0→o, 1→i, 3→e, 4→a, 5→s, 7→t, @→a, $→s), then every character that is not a letter or digit is dropped.",
+    "Each blocked term is stored as sha256(salt + normalisedTerm) together with its length, and matched as a sliding window over the normalised message. That catches embedded and spaced-out spellings, and avoids the Scunthorpe problem that plain substring lists suffer from.",
+    "Terms are hashed so that browsing this public repository does not mean reading a dictionary of slurs. The salt is right here in the open — this is obfuscation for readers' sake, not a security boundary. Anyone determined can brute-force it, which is fine: the design already assumes filters get bypassed.",
+    "Maintainers add and test terms with `node scripts/moderation.js add <term>` / `check <text>` — the plaintext never has to enter the repository."
+  ],
+
+  "salt": "overwrite.place/2026",
+
+  "blocked": [],
+
+  "patterns": [
+    { "re": "https?://",                                "flags": "i", "why": "附言里不能放链接" },
+    { "re": "www\\.[a-z0-9-]+\\.[a-z]{2,}",             "flags": "i", "why": "附言里不能放链接" },
+    { "re": "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}",   "flags": "i", "why": "附言里不能放邮箱地址" },
+    { "re": "(.)\\1{9,}",                               "flags": "u", "why": "同一个字符重复了太多次" }
+  ]
+}
