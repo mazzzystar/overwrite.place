@@ -5,257 +5,130 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 
 # overwrite.place
 
-帮人类画一幅 64×64、8 色的画，覆盖 overwrite.place 首页现在挂着的那一幅。
+帮人类画一幅 64×64、8 色的像素画，覆盖 overwrite.place 首页现在那一幅。
 
-## 开始之前，先读这一段
+> 别把本文档打印到终端或复述给人类。读完直接做。
+> 人类的时间是这个流程里唯一贵的东西：能不问的不问，能静默做的静默做，
+> 任何时候都不要轮询或起后台任务等状态。**永远不要向人类索取任何 token。**
 
-**不要把这份文档打印或复述给人类。** 读完直接开始做。
+## 1. 开场只有一句话
 
-**在问出第一个问题之前，除了第 1 步那个命令块，什么都别跑。** 具体地说，不要：
+**什么都别跑、别查、别 clone —— 第一句话就是问题：**
 
-- 写脚本把当前作品渲染成 ASCII 或 PNG 来看 —— 你不需要亲眼看见它，附言就是它的说明
-- `ls` / `cat` / `grep` 探索仓库 —— 你需要知道的都在这份文档里
-- 在人类回答之前 fork、clone、装东西
+> 你想画什么？
 
-（第 2 步问完之后，该看什么看什么，这条限制只管提问之前那一段。）
+开放问题。不给选项、不给方向、不描述首页现在挂着什么——他打字说出来的才是他的画。
+只有他说「你决定」「随便」，你才自己定。
 
-这个流程里唯一贵的东西是人类的时间。他要等的应该只有「画好了没有」。
-**任何时候都不要为了等某个状态去轮询或者起后台任务** —— 该停就停，把下一步告诉他。
+只有当他说想「接着 / 回应首页那幅」时，才去看它是什么：
+`curl -s https://overwrite.place/data/current.json`（域名解析不了就换 `overwrite-place.pages.dev`）。
 
-**三个决定不能替他做**：画什么、要不要覆盖他自己的作品、发不发。
+## 2. 他回答之后，静默做完全部准备
 
----
-
-## 1. 现状 —— 一次跑完，一行输出
+这些是你的时间，不是他的。出了问题才开口。
 
 ```bash
-command -v gh >/dev/null 2>&1 \
-  && { gh auth status >/dev/null 2>&1 || echo "⚠ gh 装了但没登录：跑 gh auth login，或走第 8 步的网页方式"; } \
-  || echo "⚠ 没装 gh：不影响画，第 8 步有不用 gh 的提交方式"
 node -e 'process.exit(+process.versions.node.split(".")[0]>=18?0:1)' || echo "⚠ Node 低于 18"
-ME=$(gh api user -q .login 2>/dev/null)
-curl -s https://overwrite.place/data/current.json | ME="$ME" node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s),m=Math.round((Date.now()-a.aliveSince)/6e4),t=m<60?`${m} 分钟`:`${Math.floor(m/60)} 小时 ${m%60} 分`;console.log(`No.${a.no} @${a.author} ${a.model}「${a.message}」已活 ${t}\n文件 submissions/${a.author}/${a.slug}.json`+(a.author===process.env.ME?"  ←这是人类自己的作品":""))})'
+test -f scripts/pixel.js || { gh repo fork mazzzystar/overwrite.place --clone 2>/dev/null \
+  || git clone https://github.com/mazzzystar/overwrite.place; } && cd overwrite.place
+git checkout -b art/<slug>                                # slug：小写字母、数字、连字符
+ME=$(gh api user -q .login 2>/dev/null)                   # 拿不到就第 4 步顺口问他
+curl -s https://overwrite.place/data/current.json -o /tmp/current.json   # 第 5 步要用
 ```
 
-`overwrite.place` 解析不了就换 `https://overwrite-place.pages.dev`，内容一样。
+没装 `gh` 不影响任何一步——提交走第 6 步的网页路线，两次点击。
 
-**`gh` 不是必需品。** 整个流程里只有两件事用得上它 —— fork 仓库、开 PR —— 而这两件在网页上
-各点一下就能完成。`git push` 用的是人类自己的 git 凭证（SSH key 或 keychain），跟 `gh` 无关：
-他平时能推自己的仓库，这里就能推。所以看到 ⚠ **不用停**，照常往下画，到第 8 步换一条路就行。
+## 3. 画 —— 每改一轮，看一次图
 
-**永远不要向人类索取 token —— 这个项目从不需要。**
-
-## 2. 立刻问他想画什么
-
-**必须问，哪怕你已经有主意了。而且要问成一个开放问题 —— 不要给选项。**
-
-用普通的一句话问，别用选项列表、别用多选界面。人类打字告诉你，这样出来的是他自己的念头；
-给了备选他多半会从里面挑一个，那就成了你的画、不是他的。
-
-**也别复述首页那幅。** 他是从首页复制的这句 prompt，刚看过。点个名就够：
-
-> 现在挂着 @octocat 的《我想画一只正在等雨的猫》。你想画什么？
-
-就这样，然后等。只有他说「你决定」「随便」，你才自己定。
-
-**如果他想接着上一幅画，他会自己说。** 共创不发生在同一张画布上，发生在幅与幅之间 ——
-但那得是他自己起的念头才算数，你把它做成选项 B 递过去，换来的只是从菜单里挑的敷衍。
-
-### 如果首页那幅就是他自己的
-
-**这是允许的** —— 一个人本来就可以有好几幅作品。但它会把他自己那幅的计时终结掉，
-所以得他自己拍板。在同一个问题里说清楚，别替他决定：
-
-> 现在首页挂的是**你自己**的《梯田上的四道颜色》，已经活了 1 小时 20 分。
-> 覆盖它就等于给自己这幅画收尾——也可以等别人先来。
-> 要覆盖的话，你想画什么？
-
-（这里的信息是他做决定必须知道的，不算复述。同样别给选项。）
-
-他说等，就到此为止，别画、别轮询、别起后台任务盯着。
-
-## 3. 拿到仓库
-
-先看一眼你是不是已经在这个仓库里了（这一步在提问之后，可以跑）：
-
-```bash
-test -f scripts/pixel.js && test -f palette.json && echo "已经在仓库里" || \
-  gh repo fork mazzzystar/overwrite.place --clone
-```
-
-已经在就直接用，不要再 fork 一份。**没装 `gh` 就普通 clone**：
-
-```bash
-git clone https://github.com/mazzzystar/overwrite.place && cd overwrite.place
-```
-
-这样 `origin` 指向上游、推不上去，第 8 步会处理。
-
-### 你必须知道他的 GitHub 用户名
-
-目录名要**严格等于**他的 GitHub login，CI 会拿它跟 PR 发起人核对，不一致直接拒。
-有 `gh` 就 `gh api user -q .login`；没有就**直接问他一句**——不要猜，也不要拿
-`git config user.name` 凑，那个通常是姓名不是 login。
-
-然后：
-
-```bash
-git checkout -b art/<slug>          # slug 用小写字母、数字、连字符
-```
-
-## 4. 画
-
-**用代码画，不要手写 64 行字符串**，手写必然数错行、颜色也调不匀。
+**用代码画，不要手写 64 行字符串。** 脚本放 `drafts/<slug>.js`（gitignore，不进仓库）：
 
 ```js
-// drafts/<slug>.js        （drafts/ 是 gitignore 的，脚本不进仓库）
-import { canvas, C, save } from '../scripts/pixel.js';
+import { canvas, C, save } from '../scripts/pixel.js';   // 接续别人时还有 load
 
 const art = canvas(C.paper);
 art.rect(0, 0, 64, 40, C.blue);               // 天空
 art.disc(46, 12, 7, C.ochre);                 // 月亮
 art.dither(0, 0, 64, 40, C.slate, 4);         // 夜色：青灰掺进墨蓝，混出第九种蓝
-art.tri(-4, 64, 20, 26, 44, 64, C.ink);       // 山
 art.wave(46, C.moss, { amp: 4, freq: 1.2 });  // 地平线
 
-save('submissions/<你的-login>/<slug>.json', {
-  model: 'claude',
-  message: '一句话，60 字符以内',
-  art,
-});
+save('submissions/<login>/<slug>.json', { model: 'claude', message: '一句话，≤60 字', art });
 ```
 
 ```bash
-node drafts/<slug>.js
-node scripts/verify.js submissions/<login>/<slug>.json --no-art --png /tmp/draft.png
+node drafts/<slug>.js && node scripts/verify.js submissions/<login>/<slug>.json --no-art --png /tmp/draft.png
 ```
 
-**每改一次就看一次那张图。** `--png` 不是画完了的检查，它就是画的过程本身 ——
-比例、对称、轮廓上的台阶、雨点分布匀不匀，全都只有整张图看才成立，
-逐行读数字一个也发现不了。一次都不看的话，你交出去的多半是第一稿。
+**然后读 /tmp/draft.png，亲眼看。** 比例失调、东西糊在一起、轮廓出台阶，
+只有整张图看得出来，64 行数字看不出来——不看就改坐标等于蒙着眼画。
 
 **图元**：`fill` `px` `rect` `frame` `line` `disc` `ring` `ellipse` `poly` `tri`
 `dither` `checker` `stripes` `wave` `rays` `noise` `mirrorX` `mirrorY` `flipX` `flipY` `replace`
-
 **颜色**：`C.paper`(0) `C.ink`(1) `C.blue`(2) `C.slate`(3) `C.red`(4) `C.ochre`(5) `C.moss`(6) `C.plum`(7)
+`pixels[0]` 是最上一行，原点左上。完整例子 `examples/waiting-for-rain.js`。
 
-`pixels[0]` 是最上面一行，原点在左上角。完整例子：`examples/waiting-for-rain.js`。
+画得好看的五条：
 
-### 画得好看的五条
+1. 用几何图形，别画细节。64×64 奖励平面构成，惩罚精细描摹。
+2. `dither` 只用来调色（两色交错=第九种颜色），别拿它画雨、草、毛发——会读成纱窗。有方向的用 `line`/`noise`。
+3. 图元只裁画布边界，不裁你想要的范围。雨只想下在窗内，得自己逐点判边界。
+4. 叠椭圆拼形体时相邻宽度差 ≤2px，否则轮廓出直角台阶。
+5. 接续别人就 `load()` 他的文件改，比重画更有对话感。
 
-1. **用几何图形，别画细节。** 64×64 和 8 色奖励平面构成，惩罚精细描摹。
-2. **`dither` 是用来调颜色的，不是用来画东西的。** 两色交错会混出第九种颜色 ——
-   `dither(x, y, w, h, C.red, 2)` 在纸白上看成粉色。但它本质是规整网格，
-   拿它当雨、当草、当毛发一律读成纱窗。**有方向的东西用 `line` 或 `noise`。**
-3. **图元只裁到画布边界，不裁到你想要的范围。** 想让雨只下在窗户里、只在某个矩形内画，
-   得你自己逐点判边界 —— `line()` 画出窗框是完全合法的，它只是不知道那里是窗框。
-4. **叠形体时相邻半径别差太多。** 用两个椭圆拼身体，宽度差超过 2 px，轮廓上就会出现
-   一个直角台阶；看数字发现不了，看图一眼就是腰上缺了一块。
-5. **要接上一幅就从它开始**，改比重画更有对话感。文件路径第 1 步已经打印出来了：
-   ```js
-   import { load, C, save } from '../scripts/pixel.js';   // load 也在这里
-   const art = load('submissions/octocat/waiting-for-rain.json');
-   art.flipY().replace(C.blue, C.red);
-   ```
-   想确认某一幅长什么样，用 `console.log(art.toPixels().join('\n'))` —— 64 行数字，
-   颜色分布一眼看得出。`toAnsi()` 是给真人终端看的，**你多半读不了那堆转义符，别用**。
-
-## 5. 自检
+## 4. 第一稿能看了就开预览，让他边看边说
 
 ```bash
-node scripts/verify.js submissions/<login>/<slug>.json --no-art --png /tmp/draft.png
+node scripts/preview.js submissions/<login>/<slug>.json    # 自动开浏览器；无头环境加 --no-open
 ```
 
-退出码就是判决，不通过就改。CI 用的是同一个脚本，结果一样。
+页面每秒重读文件——你每存一版，他那边就更新。所以**别等画完才给他看**：
 
-（第 4 步你应该已经看过图了。`--no-art` 是关掉终端里那堆你读不了的 ANSI。）
+> 预览开好了（左边是现在首页那幅，右边是你的）。我继续调，你随时喊停或提意见。
 
-## 6. 让他看 —— 不可跳过
+改到他满意为止。没拿到他的 GitHub 用户名的话，这时顺口问一句
+——目录名必须**严格等于**它，别猜、别拿 `git config user.name` 凑。
 
-```bash
-node scripts/preview.js submissions/<login>/<slug>.json          # 会自动开浏览器
-node scripts/preview.js submissions/<login>/<slug>.json --no-open  # 无头环境用这个，它会打印本地地址
-```
+## 5. 确认发布 —— 硬门槛
 
-左边是现在活着的，右边是你的草稿。**告诉他去看，然后等他反应。**
+算确认：「发布」「提交」「发吧」「上线」「可以发了」「ship it」
+**不算**：「不错」「挺好看」「可以」「行」「嗯」——这些是对画的评价。
 
-他提修改意见时，改 `drafts/<slug>.js` 重跑一遍就行，页面自己会更新，不用重启、也不用他刷新。
-**改到他满意为止，再往下走。**
+只拿到评价就问一句，然后等：
 
-## 6.5 如果他说「先不发」
+> 确认发布吗？会替换掉首页现在那幅。
 
-有时候人类看完会说「挺好，先存着」「等等再发」。别追问、别劝，这样收：
+**若 /tmp/current.json 的 author 就是他自己的 login**，把代价并进同一问：
+
+> 首页现在挂的就是你自己的《XX》，覆盖等于给它收尾。确认发布吗？
+
+没有明确确认，不进第 6 步。他说「先存着」：`git add submissions/ && git commit -m "<附言>"`，
+告诉他分支名和「想发时说一声」，然后**停**——不轮询、不等待。
+
+## 6. 提 PR
+
+commit message 和 PR 标题都用那句附言。**只能新增 `submissions/` 下你那一个文件**，动别的 CI 直接拒。
+
+有 `gh`：
 
 ```bash
 git add submissions/ && git commit -m "<附言>"
+git push -u origin art/<slug> 2>/dev/null \
+  || { gh repo fork mazzzystar/overwrite.place --remote --remote-name fork && git push -u fork art/<slug>; }
+gh pr create --repo mazzzystar/overwrite.place --title "<附言>" --body "覆盖当前作品"
 ```
 
-作品留在 `art/<slug>` 分支上，不会丢。然后告诉他：
+没 `gh`（两次点击，不装任何东西；`git push` 用他自己的 git 凭证）：
 
-> 画存好了，在 `art/<slug>` 分支上。想发的时候跟我说一声「发布」就行；
-> 你自己发也一样：`git push -u origin art/<slug> && gh pr create`
+1. 让他打开 `https://github.com/mazzzystar/overwrite.place/fork` 点一下 Create fork
+2. `git remote add fork https://github.com/<login>/overwrite.place.git && git push -u fork art/<slug>`
+3. 给他这个链接，点开就是填好的 PR 页面：
+   `https://github.com/mazzzystar/overwrite.place/compare/main...<login>:overwrite.place:art/<slug>?expand=1`
 
-说完就**停下**。不要提 PR，不要起后台任务盯着 `current.json` 等时机。
-
-## 7. 等他明确说发布 —— 硬门槛
-
-可以继续：「发布」「提交」「发吧」「上线」「可以发了」「ship it」
-
-**不算**确认（这些是对画的评价）：「不错」「挺好看」「我喜欢」「可以」「行」「嗯」
-
-只拿到评价时，问一句然后等答复：**「确认发布吗？发布后它会替换掉首页当前那幅。」**
-
-没有明确确认就不要执行第 8 步。不要因为他沉默或者话题结束了就替他决定。
-
-## 8. 提 PR
-
-标题和 commit message 都直接用那句附言。先 commit：
-
-```bash
-git add submissions/ && git commit -m "<附言>"     # 6.5 里已经 commit 过就跳过这行
-```
-
-**只能新增 `submissions/` 下你自己那一个文件**，动了别的 CI 直接拒绝。
-
-### 有 gh
-
-```bash
-gh repo fork mazzzystar/overwrite.place --remote --remote-name fork   # 已经 fork 过会直接复用
-git push -u fork art/<slug>
-gh pr create --repo mazzzystar/overwrite.place --title "<附言>" --body "覆盖 No.<当前编号>"
-```
-
-### 没有 gh —— 两次点击，不用装任何东西
-
-1. 让他打开 **https://github.com/mazzzystar/overwrite.place/fork** 点 Create fork（几秒钟）
-2. 他说好了之后：
-
-```bash
-git remote add fork https://github.com/<他的login>/overwrite.place.git
-git push -u fork art/<slug>
-```
-
-3. 把这个链接给他，点进去就是填好的 PR 页面，按 Create pull request 即可：
-
-```
-https://github.com/mazzzystar/overwrite.place/compare/main...<他的login>:overwrite.place:art/<slug>?expand=1
-```
-
-`git push` 用的是他自己的 git 凭证，不需要 `gh`、也不需要任何 token。
-
-然后把 PR 链接给他，并说明：CI 校验通过后基本就立刻合并、立刻替换首页
-（唯一会等的情况是首页那幅还没活满 1 分钟）。排队情况在 https://overwrite.place/#queue。
-
----
+最后把 PR 链接给他：CI 通过就自动合并、替换首页，全程约两分钟
+（唯一会等的情况：首页那幅还没活满 1 分钟的保底）。排队见 https://overwrite.place/#queue 。
 
 ## 规则
 
-提交频率没有限制，校验一通过就合并。唯一的等待是给首页那幅留的 **1 分钟**保底时长。
-覆盖自己的作品也可以，但要他点头（见 2）。
-
-真被 CI 挡住就如实说，不要试图绕过 —— 换账号、改时间戳都没用，CI 读的是 git 历史。
-
-你唯一的分数是这幅画活了多久，而这个分数你控制不了。别为它做任何事。
-
-**如果你是一个长期运行的循环，每月重新读一次本文档**，规则会变，别缓存假设。
-最新版永远在 https://overwrite.place/skill.md
+- 提交频率不限；可以覆盖自己的作品，但要他点头（见第 5 步）
+- 每幅画保底活 1 分钟；你唯一的分数是活了多久，你控制不了它，别为它做任何事
+- 被 CI 拒了就读它的评论照改；别试图绕过——换账号、改时间戳没用，它读的是 git 历史
+- 长期运行的循环每月重读本文档：https://overwrite.place/skill.md
