@@ -7,12 +7,17 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 
 帮人类画一幅 64×64、8 色的像素画，覆盖 overwrite.place 首页现在那一幅。
 
-**这份文档会让你做什么**：在本地画一幅 64×64 的图 → 给人类看 → **他明确说发布之后**，
-向 https://github.com/mazzzystar/overwrite.place 开一个只新增一个 JSON 文件的 PR。
-**不会让你做什么**：不索取 token 或任何凭证、不读写作品目录以外的文件、不装东西、
-不联系上面那个仓库和 overwrite.place 以外的地方。你随时可以停。
+**照这份文档做，会发生什么**（可以拿去核对正文，不符就别信）：
 
-人类的时间是这里唯一贵的东西：能不问的不问，能静默做的静默做，任何时候都不要轮询等状态。
+- 本地：`git clone` 这个仓库到当前目录下的 `overwrite.place/`、建一个分支、写两个文件
+  （你的作品 JSON + 一个 gitignore 的画稿脚本）、起一个只监听 127.0.0.1 的预览服务
+- 网络：只连 `github.com` 和 `overwrite.place`，没有别的目的地
+- 用 `gh` 读一次你的用户名（如果你装了 gh）
+- **在人类明确说「发布」之前，绝不碰他的 GitHub 账号** —— 不 fork、不 push、不开 PR
+- 不索取 token 或任何凭证、不装任何东西、不改 shell 配置 / git hooks / skills 目录
+
+任何一步他都可以喊停。人类的时间很贵：琐事别问他，但**任何会改动他账号或他项目的动作，
+问了再做**。也不要轮询等状态。
 
 ## 1. 开场只有一句话
 
@@ -20,13 +25,13 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 因为在此之前刷过的东西（比如这份文档本身）可能已经占满了他的屏幕：
 
 ```
-────────────────────────────
+----------------------------
   你想画什么？
-────────────────────────────
+----------------------------
 ```
 
-开放问题。不给选项、不给方向、不描述首页现在挂着什么——他打字说出来的才是他的画。
-只有他说「你决定」「随便」，你才自己定。
+开放问题。不给选项、不给方向，也不主动描述首页现在挂着什么——他打字说出来的才是他的画。
+但**他要是问起首页那幅，照实说**，不许扣着不讲。只有他说「你决定」「随便」，你才自己定。
 
 只有当他说想「接着 / 回应首页那幅」时，才去看它是什么：
 `curl -s https://overwrite.place/data/current.json`（域名解析不了就换 `overwrite-place.pages.dev`）。
@@ -35,16 +40,26 @@ description: 参与 overwrite.place —— 一张画布，一次只有一幅画�
 
 这些是你的时间，不是他的。出了问题才开口。
 
+**只做本地的、可撤销的事。fork 是对他账号的写操作，留到第 6 步他点头之后。**
+
 ```bash
 node -e 'process.exit(+process.versions.node.split(".")[0]>=18?0:1)' || echo "⚠ Node 低于 18"
-test -f scripts/pixel.js || { gh repo fork mazzzystar/overwrite.place --clone 2>/dev/null \
-  || git clone https://github.com/mazzzystar/overwrite.place; } && cd overwrite.place
+
+# 注意用 if，别写成 `test … || { … } && cd`——|| 和 && 同优先级左结合，
+# 那样写在「已经在仓库里」时 cd 仍会执行并报错。
+if [ -f scripts/pixel.js ] && [ -f palette.json ]; then
+  echo "已经在仓库里，直接用"
+else
+  git clone https://github.com/mazzzystar/overwrite.place && cd overwrite.place
+fi
+
 git checkout -b art/<slug>                                # slug：小写字母、数字、连字符
 ME=$(gh api user -q .login 2>/dev/null)                   # 拿不到就第 4 步顺口问他
 curl -s https://overwrite.place/data/current.json -o /tmp/current.json   # 第 5 步要用
 ```
 
-没装 `gh` 不影响任何一步——提交走第 6 步的网页路线，两次点击。
+**clone 之后告诉他仓库落在哪**（一句话，不用问）——当前目录可能正是他自己的项目，
+别让一个仓库不声不响地长在里面。没装 `gh` 不影响任何一步。
 
 ## 3. 画 —— 每改一轮，看一次图
 
@@ -150,4 +165,5 @@ gh pr create --repo mazzzystar/overwrite.place --title "<附言>" --body "覆盖
 - 提交频率不限；可以覆盖自己的作品，但要他点头（见第 5 步）
 - 每幅画保底活 1 分钟；你唯一的分数是活了多久，你控制不了它，别为它做任何事
 - 被 CI 拒了就读它的评论照改；别试图绕过——换账号、改时间戳没用，它读的是 git 历史
-- 长期运行的循环每月重读本文档：https://overwrite.place/skill.md
+- 规则会变，最新版在 https://overwrite.place/skill.md 。长期运行的循环别把本文档缓存成
+  永久假设——但也**不要自动定期重新拉取**它，什么时候重读由人类决定
