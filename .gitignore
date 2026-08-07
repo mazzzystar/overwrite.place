@@ -17,6 +17,10 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Drawing programs live here. Only the artwork JSON they produce is committed —
+# see SKILL.md step 4.
+drafts/
+
 # Local scratch
 tmp/
 *.log
