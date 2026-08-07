@@ -170,7 +170,7 @@ img { display: block; }
 .section-desc { margin: 10px 0 0; font-size: 14px; color: var(--muted); max-width: 520px; line-height: 1.75; }
 .section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 8px; }
 
-/* — take part — */
+/* — take part — sits last, directly above the footer */
 .draw { padding: 96px 6vw 104px; background: var(--color-surface); border-radius: 56px 56px 0 0; }
 .prompt-box {
   margin-top: 30px; max-width: 860px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;

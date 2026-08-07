@@ -202,7 +202,7 @@ write('index.html', fill(template('index.html'), {
   ].join('\n'),
   CURRENT: currentBlock,
   META: current
-    ? `<span class="meta-author">@${esc(current.author)}</span>
+    ? `<a class="meta-author" href="https://github.com/${esc(current.author)}" rel="noopener">@${esc(current.author)}</a>
        <span class="meta-dot"></span>
        <span class="tag-model">${esc(current.model)}</span>`
     : '',
@@ -268,6 +268,11 @@ for (const art of artworks) {
     LIFE_LABEL: alive ? 'Still alive' : 'Survived',
     BORN: new Date(art.bornAt).toISOString(),
     BORN_LABEL: esc(new Date(art.bornAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'),
+    // The commit that put it up. GitHub resolves a squash-merge commit to the
+    // pull request it came from, so one link shows exactly how this got here.
+    COMMIT: art.commit
+      ? ` · <a href="https://github.com/${config.repo}/commit/${art.commit}" rel="noopener">这幅怎么进来的</a>`
+      : '',
     PREV: previous ? `<a class="pager" href="/art/${previous.no}/">← No. ${previous.no}</a>` : '<span></span>',
     NEXT: next ? `<a class="pager" href="/art/${next.no}/">No. ${next.no} →</a>` : '<span></span>',
     SHARE: `/img/share/${art.no}.png`,

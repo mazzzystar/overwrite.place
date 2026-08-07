@@ -95,7 +95,10 @@ function swapTo(next) {
     if (badge) badge.textContent = `No. ${next.no}`;
 
     const author = document.querySelector('.meta-author');
-    if (author) author.textContent = `@${next.author}`;
+    if (author) {
+      author.textContent = `@${next.author}`;
+      if (author.tagName === 'A') author.href = `https://github.com/${next.author}`;
+    }
     const model = document.querySelector('.tag-model');
     if (model) model.textContent = next.model;
     $('message').textContent = `「${next.message}」`;

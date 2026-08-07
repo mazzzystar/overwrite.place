@@ -62,6 +62,7 @@ function logByPath(filter, keep, root = ROOT) {
   const output = git(['log', `--diff-filter=${filter}`, '--format=%H %ct', '--name-only', '--reverse', '--', 'submissions/'], root);
   const times = new Map();
   let seconds = null;
+  let sha = null;
   let ordinal = 0;
 
   for (const raw of output.split('\n')) {
@@ -69,12 +70,13 @@ function logByPath(filter, keep, root = ROOT) {
     if (!line) continue;
     const header = /^([0-9a-f]{7,40}) (\d+)$/.exec(line);
     if (header) {
+      sha = header[1];
       seconds = Number(header[2]);
       continue;
     }
     if (seconds === null || !SUBMISSION_PATH.test(line)) continue;
     if (keep === 'first' && times.has(line)) continue;
-    times.set(line, { seconds, ordinal: ordinal++ });
+    times.set(line, { seconds, sha, ordinal: ordinal++ });
   }
   return times;
 }
@@ -130,6 +132,9 @@ export function buildTimeline({ now = Date.now(), root = ROOT } = {}) {
       pixels: data.pixels,
       grid: toGrid(data.pixels),
       bornAt: entry.seconds * 1000,
+      // The commit that put it up. GitHub resolves it to the pull request it
+      // came from, which is the whole provenance story in one link.
+      commit: entry.sha ?? null,
       life: null,
     });
   });
