@@ -215,6 +215,7 @@ img { display: block; }
 .tile-by { display: flex; align-items: center; gap: 6px; margin-top: 3px; padding: 0 4px; font-size: 11px; color: var(--muted); }
 .tile-model { margin-left: auto; color: var(--color-accent-2-500); }
 .gallery-empty { margin-top: 44px; color: var(--muted); font-size: 14px; }
+.gallery-more { margin-top: 38px; display: flex; justify-content: center; }
 
 /* — queue — */
 .queue { padding: 96px 6vw 110px; background: var(--color-bg); }

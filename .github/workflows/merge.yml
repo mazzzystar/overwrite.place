@@ -35,20 +35,24 @@ jobs:
           set -euo pipefail
           echo "merged=false" >> "$GITHUB_OUTPUT"
 
-          PR=$(gh pr list --state open --label verified --json number,createdAt,headRefOid,author,isDraft \
+          # --limit matters: gh defaults to 30, so past thirty queued artworks
+          # this would merge the oldest of an arbitrary window rather than the
+          # oldest overall, and the rest could starve.
+          PR=$(gh pr list --state open --label verified --limit 200 \
+                 --json number,createdAt,headRefOid,author,isDraft \
                  --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | .[0] // empty')
           if [ -z "$PR" ]; then
             echo "队列是空的。" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          NUMBER=$(echo "$PR" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).number))")
-          AUTHOR=$(echo "$PR" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).author.login))")
+          read -r NUMBER AUTHOR HEAD_SHA <<<"$(echo "$PR" | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              const p=JSON.parse(s);console.log(p.number,p.author.login,p.headRefOid);});")"
 
           # The `verified` label was applied when the pull request was pushed,
           # which may have been hours ago. The cooldown and the
-          # cannot-replace-yourself rule are both time- and state-dependent, so
-          # they are re-checked here against the tree we are about to merge into.
+          # cannot-replace-yourself rule both depend on the state at merge time.
           git fetch --no-tags origin "+refs/pull/${NUMBER}/head:refs/remotes/pr/head"
 
           if ! node scripts/ci-check.js \
@@ -62,9 +66,36 @@ jobs:
             exit 0
           fi
 
-          gh pr merge "$NUMBER" --squash --delete-branch
-          echo "merged=true" >> "$GITHUB_OUTPUT"
-          echo "已合并 PR #${NUMBER}（@${AUTHOR}）。" >> "$GITHUB_STEP_SUMMARY"
+          # --match-head-commit pins the merge to the commit ci-check just read.
+          # Without it an author could push between the check and the merge, and
+          # this is the only point in the design where the pull request's tree
+          # reaches main at all.
+          set +e
+          gh pr merge "$NUMBER" --squash --match-head-commit "$HEAD_SHA"
+          MERGE_STATUS=$?
+          set -e
+
+          # Never infer the outcome from gh's exit code. A merge can succeed and
+          # gh still exit non-zero on something afterwards; with `set -e` that
+          # would abort before `merged=true` is written, the deploy would be
+          # skipped, and the site would keep showing the previous artwork as
+          # alive while main already held the new one. Ask GitHub instead.
+          STATE=$(gh pr view "$NUMBER" --json state --jq .state)
+
+          if [ "$STATE" = "MERGED" ]; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+            echo "已合并 PR #${NUMBER}（@${AUTHOR}）。" >> "$GITHUB_STEP_SUMMARY"
+            # Best effort, and deliberately after the outcome is recorded: head
+            # branches on forks are not ours to delete.
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$(gh pr view "$NUMBER" --json headRefName --jq .headRefName)" || true
+            exit 0
+          fi
+
+          # It did not merge. Take the label off so this pull request stops being
+          # the permanent head of the queue and blocking everyone behind it.
+          gh pr edit "$NUMBER" --remove-label verified --add-label needs-changes
+          gh pr comment "$NUMBER" --body "$(printf '### ⚠️ 合并没有成功\n\n队列尝试合并这个 PR 但没有成功（gh 退出码 %s，当前状态 %s）。常见原因是有冲突、分支落后于 main，或者你在校验之后又推了新的 commit。\n\n把分支同步到最新的 main 再推一次，校验会重新跑。' "$MERGE_STATUS" "$STATE")"
+          echo "PR #${NUMBER} 合并失败（状态 ${STATE}），已退回队列，不阻塞后面的作品。" >> "$GITHUB_STEP_SUMMARY"
 
   # A merge made with GITHUB_TOKEN does not raise a push event, so the deploy
   # has to be called rather than waited for.

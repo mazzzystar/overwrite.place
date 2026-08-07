@@ -11,7 +11,10 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   no: boot.current ? boot.current.no : null,
-  bornAt: boot.current ? boot.current.bornAt : null,
+  // Not bornAt: an artwork that returned to the wall after the one above it was
+  // taken down starts counting from the takedown, not from its first showing.
+  aliveSince: boot.current ? boot.current.aliveSince : null,
+  loadedAll: boot.galleryRendered >= boot.galleryTotal,
 };
 
 // ── survival clock ──────────────────────────────────────────────────────────
@@ -39,8 +42,8 @@ function formatShort(seconds) {
 }
 
 function tickClock() {
-  if (state.bornAt === null) return;
-  $('aliveText').textContent = formatLife((Date.now() - state.bornAt) / 1000);
+  if (state.aliveSince === null) return;
+  $('aliveText').textContent = formatLife((Date.now() - state.aliveSince) / 1000);
 }
 
 // ── the swap ────────────────────────────────────────────────────────────────
@@ -77,7 +80,7 @@ function showObituary(no, seconds) {
 
 function swapTo(next) {
   const previousNo = state.no;
-  const previousBorn = state.bornAt;
+  const previousSince = state.aliveSince;
 
   const hero = $('hero');
   hero.style.opacity = '0';
@@ -98,46 +101,95 @@ function swapTo(next) {
     $('message').textContent = `「${next.message}」`;
 
     state.no = next.no;
-    state.bornAt = next.bornAt;
+    state.aliveSince = next.aliveSince ?? next.bornAt;
     tickClock();
     hero.style.opacity = '1';
 
     if (previousNo !== null) {
-      showObituary(previousNo, (next.bornAt - previousBorn) / 1000);
-      markGalleryOverwritten(previousNo);
+      const lived = (next.bornAt - previousSince) / 1000;
+      showObituary(previousNo, lived);
+      markGalleryOverwritten(previousNo, lived);
     }
     prependGalleryTile(next);
+    // The arriving tile has to obey the filter and sort the visitor set, and
+    // its model may be one that had no tab until now.
+    buildTabs();
+    applyFilters();
   }, 450);
 }
 
-function markGalleryOverwritten(no) {
+function markGalleryOverwritten(no, lived) {
   const tile = document.querySelector(`.tile[data-no="${no}"]`);
   if (!tile) return;
   tile.classList.remove('live');
+  tile.dataset.life = String(Math.round(lived));
   const life = tile.querySelector('.tile-life');
-  if (life && state.bornAt) life.textContent = formatShort((state.bornAt - Number(tile.dataset.born ?? 0)) / 1000);
+  if (life) life.textContent = formatShort(lived);
+}
+
+/** One gallery tile. Shared by the live swap and the on-demand gallery load. */
+function makeTile(art, live) {
+  const tile = document.createElement('a');
+  tile.className = `tile${live ? ' live' : ''}`;
+  tile.href = `/art/${art.no}/`;
+  tile.dataset.model = art.model;
+  tile.dataset.no = String(art.no);
+  tile.dataset.born = String(art.bornAt);
+  tile.dataset.life = art.life === null || art.life === undefined ? '' : String(art.life);
+  tile.innerHTML =
+    '<div class="tile-frame"><img width="64" height="64" loading="lazy"></div>' +
+    '<div class="tile-cap"><span class="tile-no"></span><span class="tile-life"></span></div>' +
+    '<div class="tile-by"><span class="tile-author"></span><span class="tile-model"></span></div>';
+  const image = tile.querySelector('img');
+  image.src = `/img/art/${art.no}.png`;
+  image.alt = art.message ?? '';
+  tile.querySelector('.tile-no').textContent = `No. ${art.no}`;
+  tile.querySelector('.tile-life').textContent = live ? '仍在展出' : formatShort(art.life ?? 0);
+  tile.querySelector('.tile-author').textContent = `@${art.author}`;
+  tile.querySelector('.tile-model').textContent = art.model;
+  return tile;
 }
 
 function prependGalleryTile(art) {
   const grid = $('grid');
   if (!grid || grid.querySelector(`.tile[data-no="${art.no}"]`)) return;
+  grid.prepend(makeTile(art, true));
+}
 
-  const tile = document.createElement('a');
-  tile.className = 'tile live';
-  tile.href = `/art/${art.no}/`;
-  tile.dataset.model = art.model;
-  tile.dataset.no = String(art.no);
-  tile.dataset.born = String(art.bornAt);
-  tile.innerHTML =
-    '<div class="tile-frame"><img width="64" height="64" loading="lazy"></div>' +
-    '<div class="tile-cap"><span class="tile-no"></span><span class="tile-life">仍在展出</span></div>' +
-    '<div class="tile-by"><span class="tile-author"></span><span class="tile-model"></span></div>';
-  tile.querySelector('img').src = `/img/art/${art.no}.png`;
-  tile.querySelector('img').alt = art.message;
-  tile.querySelector('.tile-no').textContent = `No. ${art.no}`;
-  tile.querySelector('.tile-author').textContent = `@${art.author}`;
-  tile.querySelector('.tile-model').textContent = art.model;
-  grid.prepend(tile);
+/**
+ * Pull in the artworks the homepage did not bake in. Only the newest page is
+ * server-rendered, so filtering and sorting need the rest before they can claim
+ * to cover the whole gallery.
+ */
+let loading = null;
+function loadWholeGallery() {
+  if (state.loadedAll) return Promise.resolve();
+  if (loading) return loading;
+
+  const button = $('loadMore');
+  if (button) { button.disabled = true; button.textContent = '载入中…'; }
+
+  loading = fetch('/data/index.json', { cache: 'no-store' })
+    .then((response) => response.json())
+    .then((data) => {
+      const grid = $('grid');
+      const have = new Set([...grid.querySelectorAll('.tile')].map((t) => t.dataset.no));
+      const fragment = document.createDocumentFragment();
+      for (const art of data.artworks) {
+        if (have.has(String(art.no))) continue;
+        fragment.append(makeTile(art, art.no === state.no));
+      }
+      grid.append(fragment);
+      state.loadedAll = true;
+      if (button) button.remove();
+      applyFilters();
+    })
+    .catch(() => {
+      if (button) { button.disabled = false; button.textContent = '载入失败，再试一次'; }
+      loading = null;
+    });
+
+  return loading;
 }
 
 async function pollCurrent() {
@@ -146,6 +198,10 @@ async function pollCurrent() {
     if (!response.ok) return;
     const next = await response.json();
     if (next.empty || next.no === state.no) return;
+    // A lower number means the artwork on the wall was taken down and an older
+    // one is back. There is no obituary to show for that, and animating it as
+    // an arrival would report a negative lifespan. Take the fresh page.
+    if (next.no < state.no) { window.location.reload(); return; }
     swapTo(next);
   } catch {
     // Offline or a deploy in flight. The clock keeps running; try again later.
@@ -169,14 +225,17 @@ function applyFilters() {
   }
 
   const lifeOf = (tile) => (tile.classList.contains('live')
-    ? (Date.now() - state.bornAt) / 1000
+    ? (Date.now() - state.aliveSince) / 1000
     : Number(tile.dataset.life || 0));
 
   const ordered = [...tiles].sort(filters.sort === '最长寿'
     ? (a, b) => lifeOf(b) - lifeOf(a)
     : (a, b) => Number(b.dataset.no) - Number(a.dataset.no));
 
-  for (const tile of ordered) grid.append(tile);
+  // One mutation, not one per tile. Appending in a loop reflows the grid on
+  // every iteration, which at gallery scale is the difference between instant
+  // and a visible freeze.
+  grid.replaceChildren(...ordered);
   $('emptyGallery').hidden = visible > 0;
 }
 
@@ -184,7 +243,16 @@ function buildTabs() {
   const tabs = $('tabs');
   if (!tabs) return;
 
-  const models = [...new Set([...document.querySelectorAll('.tile')].map((t) => t.dataset.model))].sort();
+  // Rebuilt rather than appended to, because this runs again after a swap.
+  tabs.replaceChildren();
+
+  // The models baked in at build time, plus any that arrived since — a model
+  // whose first artwork lands via the poll still needs a tab.
+  const models = [...new Set([
+    ...(boot.models ?? []),
+    ...[...document.querySelectorAll('.tile')].map((tile) => tile.dataset.model),
+  ])].filter(Boolean).sort();
+
   const make = (label, group) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -193,6 +261,9 @@ function buildTabs() {
     button.addEventListener('click', () => {
       filters[group] = label;
       tabs.querySelectorAll(`[data-group="${group}"]`).forEach((b) => b.classList.toggle('active', b.textContent === label));
+      // A filter that only searches the newest page would quietly lie about
+      // what is in the gallery, so narrowing pulls in the rest first.
+      if (!state.loadedAll) loadWholeGallery();
       applyFilters();
     });
     button.dataset.group = group;
@@ -301,6 +372,9 @@ function setup() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }
+
+  const loadMore = $('loadMore');
+  if (loadMore) loadMore.addEventListener('click', loadWholeGallery);
 
   buildTabs();
   applyFilters();

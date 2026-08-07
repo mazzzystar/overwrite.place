@@ -19,6 +19,9 @@ const DIST = resolve(ROOT, 'dist');
 const SITE = resolve(ROOT, 'site');
 const started = Date.now();
 
+/** How many gallery tiles are baked into the homepage. The rest load on demand. */
+const GALLERY_PAGE = 60;
+
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
@@ -56,6 +59,22 @@ if (isShallowClone()) {
 }
 
 const { artworks, uncommitted, totalEverPosted } = buildTimeline();
+
+// Locally an uncommitted file is convenience — you can see a draft in place.
+// In CI it means git has no record of when the artwork went up, so the build
+// would invent a timestamp and hand it a number that moves on the next run.
+if (process.env.CI && uncommitted.length > 0) {
+  console.error([
+    '',
+    '  构建中止：以下文件在 submissions/ 里但不在 git 历史中',
+    ...uncommitted.map((path) => `    ${path}`),
+    '',
+    '  作品的上线时刻来自「添加该文件的那个 commit」。没有 commit 就没有时刻，',
+    '  编号会在每次构建时漂移。',
+    '',
+  ].join('\n'));
+  process.exit(1);
+}
 
 // Every artwork on the site has already passed this exact check in CI. Running
 // it again at build time means a bad file can never reach the homepage, even if
@@ -113,7 +132,17 @@ write('data/index.json', JSON.stringify({
 }));
 
 write('data/current.json', JSON.stringify(
-  current ? { ...meta(current), pixels: current.pixels, total: artworks.length } : { empty: true },
+  current
+    ? {
+        ...meta(current),
+        // Where the clock starts. Equal to bornAt normally, and later than it
+        // when this artwork returned to the wall after the one above it was
+        // taken down.
+        aliveSince: current.aliveSince,
+        pixels: current.pixels,
+        total: artworks.length,
+      }
+    : { empty: true },
 ));
 
 // ── pages ───────────────────────────────────────────────────────────────────
@@ -179,11 +208,23 @@ write('index.html', fill(template('index.html'), {
     : '',
   MESSAGE: current ? `「${esc(current.message)}」` : '',
   TOTAL: String(artworks.length),
-  GALLERY: newest.map(galleryTile).join('\n'),
+  // Only the newest page is server-rendered. At 1500 artworks the full grid was
+  // 13,600 DOM nodes and a quarter-second freeze on every filter click; the
+  // rest now arrives from data/index.json when asked for. Crawlers still reach
+  // every artwork — sitemap.xml lists them all, and each has its own page.
+  GALLERY: newest.slice(0, GALLERY_PAGE).map(galleryTile).join('\n'),
+  MORE: artworks.length > GALLERY_PAGE
+    ? `<button id="loadMore" class="btn btn-secondary" type="button">还有 ${artworks.length - GALLERY_PAGE} 幅，全部展开</button>`
+    : '',
   BOOTSTRAP: JSON.stringify({
     repo: config.repo,
     mergeIntervalMinutes: config.queue.mergeIntervalMinutes,
-    current: current ? { no: current.no, bornAt: current.bornAt } : null,
+    current: current ? { no: current.no, aliveSince: current.aliveSince } : null,
+    galleryRendered: newest.slice(0, GALLERY_PAGE).length,
+    galleryTotal: artworks.length,
+    // Every model that appears anywhere in the gallery, not only on the first
+    // page — otherwise a filter would be missing from the tabs entirely.
+    models: [...new Set(artworks.map((art) => art.model))].sort(),
   }).replace(/</g, '\\u003c'),
 }));
 
@@ -234,6 +275,10 @@ for (const art of artworks) {
 }
 
 // ── static assets ───────────────────────────────────────────────────────────
+
+// The favicon is whatever is on the wall. Pointing it at a fixed artwork would
+// 404 the day that artwork is taken down.
+if (current) write('favicon.png', renderArtwork(current.grid));
 
 cpSync(resolve(SITE, 'style.css'), resolve(DIST, 'style.css'));
 cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
