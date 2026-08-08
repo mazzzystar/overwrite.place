@@ -314,7 +314,12 @@ if (current) write('favicon.png', renderArtwork(current.grid));
 cpSync(resolve(SITE, 'icons'), resolve(DIST, 'icons'), { recursive: true });
 cpSync(resolve(SITE, 'style.css'), resolve(DIST, 'style.css'));
 cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
-cpSync(resolve(ROOT, 'SKILL.md'), resolve(DIST, 'skill.md'));
+// 主地址是 /guide。"skill" 在 agent 生态里是个被占用的词——它意味着"一段要被
+// 安装、被采纳为能力的东西"，正是注入防御最警惕的形状，实测中 agent 会因为这个
+// 文件名而拒绝抓取。/skill.md 作为兼容别名保留（写实体文件而非 301，因为不是
+// 每个 agent 的 curl 都带 -L）。
+cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide'));
+cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'skill.md'));
 cpSync(resolve(ROOT, 'palette.json'), resolve(DIST, 'palette.json'));
 
 write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`);
@@ -351,6 +356,10 @@ write('_headers', [
   // between an artwork going live and anyone seeing it — most of the total
   // wait, and all of it dead time at the exact moment someone is watching.
   '  Cache-Control: public, max-age=15',
+  '',
+  '/guide',
+  '  Content-Type: text/plain; charset=utf-8',
+  '  Cache-Control: public, max-age=600',
   '',
   '/skill.md',
   // text/plain, not text/markdown: browsers download markdown rather than show

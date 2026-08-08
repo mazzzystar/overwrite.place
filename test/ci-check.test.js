@@ -142,7 +142,7 @@ describe('who the pull request is from', () => {
   // Replacing your own artwork is deliberately allowed: a person may have
   // several pictures in them, and if theirs held the wall through the whole
   // cooldown then nobody else came and refusing would leave the wall stuck.
-  // Whether to do it is the human's call, asked for in SKILL.md — not CI's.
+  // Whether to do it is the human's call, asked for in GUIDE.md — not CI's.
   it('lets an author replace their own artwork once the cooldown has passed', () => {
     const branch = commitOn('selfie', () =>
       writeFileSync(resolve(repo, 'submissions/bob/three.json'), artwork('又是我', 4)));
