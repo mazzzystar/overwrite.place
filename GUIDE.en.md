@@ -153,6 +153,15 @@ Five traps (each one field-tested the hard way):
 - Stacked ellipses building a form need adjacent widths within 2px, or the
   outline stair-steps
 
+**Given a reference image (a photo, a poster), don't redraw it by eye** —
+proportions and values are the machine's job. Create the artwork file first
+(an empty base is fine), open the preview, and have them drag the image onto
+the page: the browser quantizes it into a 64×64 base draft written straight
+into your artwork file; the preview shows it within a second. Then your job
+starts: `load()` it and work like an artist — delete text and stray pixels,
+flatten the large areas per the detail budget, sharpen the silhouette. Verify
+and look at the image as usual.
+
 Continuing someone's piece? `load()` their file and revise — more of a
 conversation than repainting.
 

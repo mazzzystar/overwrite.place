@@ -17,7 +17,7 @@
  * only relays the human's words: publishing itself still happens in the
  * terminal, where every account-touching step stays visible.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -155,6 +155,13 @@ const PAGE = `<!DOCTYPE html>
   .btn.ghost:hover { border-color:var(--muted); color:var(--ink); }
   .btn:disabled { opacity:.4; cursor:not-allowed; }
   .done { text-align:center; margin:26px auto 0; max-width:760px; font-size:16px; }
+  .droptip { max-width:760px; margin:14px auto 0; text-align:center; font-size:12px; color:var(--faint); }
+  body.dragging::after { content:'松手，把它变成 64×64 底稿'; position:fixed; inset:0; display:grid; place-items:center;
+    background:rgba(250,246,239,.88); font-size:20px; color:var(--accent-dark); z-index:50; }
+  .refbar { max-width:760px; margin:18px auto 0; padding:14px 18px; border-radius:18px; background:var(--paper);
+    border:1px solid var(--accent); display:flex; align-items:center; gap:16px; justify-content:center; }
+  .refbar canvas { width:96px; height:96px; image-rendering:pixelated; border-radius:6px; }
+  .refbar label { font-size:13px; color:var(--muted); display:flex; gap:5px; align-items:center; }
   footer { max-width:760px; margin:26px auto 0; text-align:center; color:var(--muted); font-size:13px; line-height:1.9; }
   kbd { padding:2px 8px; border-radius:999px; background:var(--accent); color:var(--paper); font:inherit; font-size:12px; }
   .pulse { display:inline-block; width:6px; height:6px; border-radius:999px; background:#7a8a5e; margin-right:6px; }
@@ -184,10 +191,19 @@ const PAGE = `<!DOCTYPE html>
 
   <div class="panel" id="panel"><div class="status" id="status">读取中…</div><div id="detail"></div></div>
 
+  <div id="refBar" class="refbar" hidden>
+    <canvas id="refCanvas" width="64" height="64"></canvas>
+    <label><input type="checkbox" id="refDither"> 抖动</label>
+    <button id="refApply" class="btn primary" type="button">写入底稿</button>
+    <button id="refCancel" class="btn ghost" type="button">取消</button>
+  </div>
+
   <div class="actions" id="actions">
     <button id="approve" class="btn primary" type="button">就这幅了，发布</button>
     <button id="rethink" class="btn ghost" type="button">再想想</button>
   </div>
+
+  <div class="droptip" id="dropTip">有参考图？直接拖进这个页面——量化成 64×64 底稿，agent 再精修。</div>
 
   <footer id="foot">
     <span class="pulse"></span><span id="foot1">改了文件这一页会自己更新，不用刷新。</span><br>
@@ -369,6 +385,110 @@ async function decide(choice) {
 
 el('approve').addEventListener('click', () => decide('publish'));
 el('rethink').addEventListener('click', () => decide('revise'));
+
+// ── reference image → 64×64 base draft ─────────────────────────────────────
+// The browser is the image library: it decodes anything, the canvas
+// downsamples, and this page already owns a token channel to the agent.
+const RGB = PALETTE.map(function (h) {
+  return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+});
+function nearestColor(r, g, b) {
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < RGB.length; i++) {
+    const p = RGB[i], rm = (r + p[0]) / 2, dr = r - p[0], dg = g - p[1], db = b - p[2];
+    const d = (2 + rm/256)*dr*dr + 4*dg*dg + (2 + (255-rm)/256)*db*db;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+function quantize(srcData, fs) {
+  const d = new Float32Array(srcData);
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+    const l = 0.299*r + 0.587*g + 0.114*b;
+    r = l + (r - l) * 1.2; g = l + (g - l) * 1.2; b = l + (b - l) * 1.2;
+    d[i] = (r - 128) * 1.1 + 128; d[i+1] = (g - 128) * 1.1 + 128; d[i+2] = (b - 128) * 1.1 + 128;
+  }
+  const out = new Uint8Array(64 * 64);
+  for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+    const i = (y * 64 + x) * 4;
+    const r = Math.max(0, Math.min(255, d[i])), g = Math.max(0, Math.min(255, d[i+1])), b = Math.max(0, Math.min(255, d[i+2]));
+    const pi = nearestColor(r, g, b);
+    out[y * 64 + x] = pi;
+    if (fs) {
+      const p = RGB[pi], er = (r - p[0]) * 0.55, eg = (g - p[1]) * 0.55, eb = (b - p[2]) * 0.55;
+      const push = function (dx, dy, w) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= 64 || ny >= 64) return;
+        const j = (ny * 64 + nx) * 4;
+        d[j] += er * w; d[j+1] += eg * w; d[j+2] += eb * w;
+      };
+      push(1, 0, 7/16); push(-1, 1, 3/16); push(0, 1, 5/16); push(1, 1, 1/16);
+    }
+  }
+  return out;
+}
+
+let refSource = null;   // 64×64 rgba of the dropped image
+let refIndices = null;
+
+function paintRef() {
+  refIndices = quantize(refSource, el('refDither').checked);
+  const ctx = el('refCanvas').getContext('2d');
+  const im = ctx.createImageData(64, 64);
+  for (let i = 0; i < 64 * 64; i++) {
+    const p = RGB[refIndices[i]];
+    im.data[i*4] = p[0]; im.data[i*4+1] = p[1]; im.data[i*4+2] = p[2]; im.data[i*4+3] = 255;
+  }
+  ctx.putImageData(im, 0, 0);
+}
+
+document.addEventListener('dragover', function (e) { e.preventDefault(); document.body.classList.add('dragging'); });
+document.addEventListener('dragleave', function (e) { if (e.target === document.body || !e.relatedTarget) document.body.classList.remove('dragging'); });
+document.addEventListener('drop', function (e) {
+  e.preventDefault();
+  document.body.classList.remove('dragging');
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!file || file.type.indexOf('image/') !== 0) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = function () {
+    URL.revokeObjectURL(url);
+    // 居中裁方 → 256 中转（平掉噪点）→ 64
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+    const mid = document.createElement('canvas');
+    mid.width = 256; mid.height = 256;
+    mid.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+    const small = document.createElement('canvas');
+    small.width = 64; small.height = 64;
+    const sctx = small.getContext('2d');
+    sctx.drawImage(mid, 0, 0, 64, 64);
+    refSource = sctx.getImageData(0, 0, 64, 64).data;
+    paintRef();
+    el('refBar').hidden = false;
+  };
+  img.src = url;
+});
+el('refDither').addEventListener('change', paintRef);
+el('refCancel').addEventListener('click', function () { el('refBar').hidden = true; refSource = null; });
+el('refApply').addEventListener('click', async function () {
+  if (!refIndices) return;
+  const rows = [];
+  for (let y = 0; y < 64; y++) {
+    let row = '';
+    for (let x = 0; x < 64; x++) row += String(refIndices[y * 64 + x]);
+    rows.push(row);
+  }
+  try {
+    const res = await fetch('/reference', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, pixels: rows }),
+    });
+    if (res.ok) { el('refBar').hidden = true; refSource = null; }
+  } catch {}
+});
 </script>
 </body>
 </html>`;
@@ -430,10 +550,48 @@ function handleDecision(req, res) {
   });
 }
 
+function handleReference(req, res) {
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 32768) req.destroy();
+  });
+  req.on('end', () => {
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch {}
+    const rowsOk = parsed && parsed.token === TOKEN && Array.isArray(parsed.pixels)
+      && parsed.pixels.length === SIZE
+      && parsed.pixels.every((r) => typeof r === 'string' && r.length === SIZE && /^[0-7]+$/.test(r));
+    if (!rowsOk) {
+      res.writeHead(403).end();
+      return;
+    }
+    // Into the same draft file the page watches — the next 1-second poll
+    // shows the base draft, and the agent picks it up with load().
+    let draft = {};
+    try { draft = JSON.parse(readFileSync(absolute, 'utf8')); } catch {}
+    if (typeof draft !== 'object' || draft === null || Array.isArray(draft)) draft = {};
+    if (typeof draft.model !== 'string') draft.model = 'claude';
+    if (typeof draft.message !== 'string') draft.message = '';
+    draft.pixels = parsed.pixels;
+    writeFileSync(absolute, JSON.stringify(draft, null, 2) + '\n');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"ok":true}');
+    console.log('');
+    console.log(`  人类拖入了参考图，已量化成 64×64 底稿写进 ${repoPath}`);
+    console.log('  A reference image was quantized into the draft file. Refine it from here with load().');
+    console.log('');
+  });
+}
+
 const server = createServer((req, res) => {
   lastSeen = Date.now();
   if (req.method === 'POST' && req.url === '/decision') {
     handleDecision(req, res);
+    return;
+  }
+  if (req.method === 'POST' && req.url === '/reference') {
+    handleReference(req, res);
     return;
   }
   if (req.url === '/state') {
