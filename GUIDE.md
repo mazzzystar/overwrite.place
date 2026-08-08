@@ -52,9 +52,14 @@ if [ ! -f scripts/pixel.js ]; then
   cd overwrite.place
 fi
 
+# 目录可能是上次画画留下的旧版本——脚本和校验规则以线上为准（CI 永远跑最新
+# 规则，本地旧规则通过不算数），所以能拉新就拉新；离线拉不到也不挡路。
+git fetch -q origin main 2>/dev/null || true
+
 # 建分支前必须确认真的在仓库里。clone 失败时下面这道闸会拦住——
-# 否则分支会建进人类自己的项目里。
-[ -f scripts/pixel.js ] && git checkout -b art/<slug>     # slug：小写字母、数字、连字符
+# 否则分支会建进人类自己的项目里。新分支从 origin/main 出发（拉不到就用本地）。
+[ -f scripts/pixel.js ] && { git checkout -q -b art/<slug> origin/main 2>/dev/null \
+  || git checkout -b art/<slug>; }                        # slug：小写字母、数字、连字符
 ME=$(gh api user -q .login 2>/dev/null)                   # 拿不到就第 4 步顺口问他
 curl -sf https://overwrite.place/data/current.json -o /tmp/current.json  # 第 5 步要用；-f 防止把 404 页写进文件
 ```

@@ -69,9 +69,16 @@ if [ ! -f scripts/pixel.js ]; then
   cd overwrite.place
 fi
 
+# The directory may be left over from a previous drawing — scripts and rules
+# follow the live site (CI always runs the newest rules; passing old local
+# rules counts for nothing), so refresh when possible; offline is fine too.
+git fetch -q origin main 2>/dev/null || true
+
 # Confirm we are truly inside the repo before branching. If the clone failed,
 # this gate stops the branch from being created in the human's own project.
-[ -f scripts/pixel.js ] && git checkout -b art/<slug>     # slug: lowercase letters, digits, hyphens
+# Branch off origin/main (fall back to local HEAD if the fetch failed).
+[ -f scripts/pixel.js ] && { git checkout -q -b art/<slug> origin/main 2>/dev/null \
+  || git checkout -b art/<slug>; }                        # slug: lowercase letters, digits, hyphens
 ME=$(gh api user -q .login 2>/dev/null)                   # if this fails, just ask at step 4
 curl -sf https://overwrite.place/data/current.json -o /tmp/current.json  # needed at step 5; -f keeps a 404 page out of the file
 ```

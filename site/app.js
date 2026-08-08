@@ -177,7 +177,7 @@ function retryOnError(img, canonical) {
   img.addEventListener('error', () => {
     if (tries >= 5) return;
     tries++;
-    setTimeout(() => { img.src = `${canonical}?r=${tries}`; }, 4000 * tries);
+    setTimeout(() => { img.src = `${canonical}${canonical.includes('?') ? '&' : '?'}r=${tries}`; }, 4000 * tries);
   });
 }
 
@@ -214,7 +214,7 @@ function rehangWall(wall, options, artworks, newcomer) {
       cell.dataset.no = String(t.art.no);
       cell.href = `${PREFIX}/art/${t.art.no}/`;
       const img = document.createElement('img');
-      const canonical = `/img/art/${t.art.no}.png`;
+      const canonical = `/img/art/${t.art.no}.png?b=${t.art.bornAt}`;
       if (newcomer && t.art.no === newcomer.no && newcomer.src) img.src = newcomer.src;
       else { retryOnError(img, canonical); img.src = canonical; }
       img.alt = t.art.message ?? '';
@@ -329,7 +329,7 @@ function makeTile(art, live, srcOverride) {
     '<div class="tile-cap"><span class="tile-no"></span><span class="tile-life"></span></div>' +
     '<div class="tile-by"><span class="tile-author"></span><span class="tile-model"></span></div>';
   const image = tile.querySelector('img');
-  const canonical = `/img/art/${art.no}.png`;
+  const canonical = `/img/art/${art.no}.png?b=${art.bornAt}`;
   if (srcOverride) image.src = srcOverride;
   else { retryOnError(image, canonical); image.src = canonical; }
   image.alt = art.message ?? '';
