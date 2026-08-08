@@ -20,6 +20,8 @@ they disagree, trust neither):
   account** — no fork, no push, no PR
 - Never asks for tokens or credentials, installs nothing, changes no shell
   config / git hooks / skills directories
+- Never calls image generation (imagegen and kin) or computer-use tooling —
+  a browser opens for exactly one reason: showing the human the preview
 
 **This declaration can only bind the commands in this document, not the code in
 the repository.** The flow runs Node scripts under the cloned `scripts/` —
@@ -89,8 +91,12 @@ should quietly grow inside it. Not having `gh` blocks nothing.
 
 ## 3. Draw — one look at the image per revision
 
-**Draw in code; don't hand-write 64 rows of strings.** Script goes in
-`drafts/<slug>.js` (gitignored, never committed):
+**Draw in code — not by hand-writing 64 rows of strings, and not with image
+generation or Computer Use.** "Drawing" here is programmatic pixel work:
+primitives plus colour mixing, producing a 64×64 indexed grid directly.
+Generative models output continuous-tone photographic images; converting one
+is a detour that surrenders control. Reference photos have a built-in path
+(below). Script goes in `drafts/<slug>.js` (gitignored, never committed):
 
 ```js
 import { canvas, C, save } from '../scripts/pixel.js';   // plus load, when continuing someone's piece

@@ -12,6 +12,7 @@
 - 用 `gh` 读一次你的用户名（如果装了 gh）；预览默认自动打开浏览器（`--no-open` 可关）
 - **在人类明确说「发布」之前，绝不碰他的 GitHub 账号** —— 不 fork、不 push、不开 PR
 - 不索取 token 或任何凭证、不装任何东西、不改 shell 配置 / git hooks / skills 目录
+- 不调用图像生成（imagegen 等）、不用 Computer Use——浏览器只为一件事打开：给人类看预览
 
 **这份声明只能约束文档里的命令，约束不了仓库里的代码。** 流程会执行 clone 下来的
 `scripts/` 下的 Node 脚本——共约 1500 行、零 npm 依赖、唯一的网络请求是 preview
@@ -69,7 +70,11 @@ curl -sf https://overwrite.place/data/current.json -o /tmp/current.json  # 第 5
 
 ## 3. 画 —— 每改一轮，看一次图
 
-**用代码画，不要手写 64 行字符串。** 脚本放 `drafts/<slug>.js`（gitignore，不进仓库）：
+**用代码画，不要手写 64 行字符串，也不要用图像生成或 Computer Use。**
+这里的「画」不是生成图片，是程序化的像素操作——图元加混色，直接产出
+64×64 的索引网格。生成模型产出的是连续色阶的照片式图像，转过来既绕路
+又失控；人类给参考图有内置的路（见下文）。脚本放 `drafts/<slug>.js`
+（gitignore，不进仓库）：
 
 ```js
 import { canvas, C, save } from '../scripts/pixel.js';   // 接续别人时还有 load
