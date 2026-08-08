@@ -195,7 +195,7 @@ const ogTags = ({ title, description, url, image }) => [
 
 const galleryTile = (art, lang, prefix) => `
         <a class="tile${art.no === current?.no ? ' live' : ''}" href="${prefix}/art/${art.no}/" data-model="${esc(art.model)}" data-no="${art.no}" data-life="${art.life ?? ''}" data-born="${art.bornAt}">
-          <div class="tile-frame"><img src="/img/art/${art.no}.png?b=${art.bornAt}-2" alt="${esc(art.message)}" loading="lazy" width="64" height="64"></div>
+          <div class="tile-frame"><img src="/img/art/${art.no}.png?b=${art.bornAt}" alt="${esc(art.message)}" loading="lazy" width="64" height="64"></div>
           <div class="tile-cap"><span class="tile-no">No. ${art.no}</span><span class="tile-life">${art.no === current?.no ? T[lang].artAlive : esc(lifeLabelFor(lang, art.life))}</span></div>
           <div class="tile-by"><span>@${esc(art.author)}</span><span class="tile-model">${esc(art.model)}</span></div>
         </a>`.trim();
@@ -223,7 +223,7 @@ const wallCell = (t, lang, prefix) => {
     // The ?b= query is the artwork's birth timestamp — stable forever, so
     // caching still works, but the cache key differs from the bare URL that
     // one bad propagation window poisoned with an immutable 200-HTML.
-    `<img src="/img/art/${art.no}.png?b=${art.bornAt}-2" alt="${esc(art.message)}" width="64" height="64"${live ? ' fetchpriority="high"' : ' loading="lazy"'}>` +
+    `<img src="/img/art/${art.no}.png?b=${art.bornAt}" alt="${esc(art.message)}" width="64" height="64"${live ? ' fetchpriority="high"' : ' loading="lazy"'}>` +
     `${live ? '<span class="wpulse"></span>' : ''}</a>`;
 };
 
@@ -388,7 +388,7 @@ for (const art of artworks) {
       HOME: `${prefix}/`,
       LANG_SWITCH: langSwitch(lang, path),
       NO: String(art.no),
-      IMAGE: `/img/art/${art.no}.png?b=${art.bornAt}-2`,
+      IMAGE: `/img/art/${art.no}.png?b=${art.bornAt}`,
       MESSAGE: esc(art.message),
       AUTHOR: esc(art.author),
       MODEL: modelBadge(art.model),

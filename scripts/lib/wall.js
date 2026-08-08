@@ -22,7 +22,7 @@ export const WALL_DESKTOP = { minSize: 1 / 32, maxTiles: Infinity };
 export const WALL_MOBILE = { minSize: 1 / 16, maxTiles: 40 };
 
 /** Empty-cell palette: mostly paper, sparse riso accents — Mondrian's ratio. */
-const FIELDS = ['#FAF6EF', '#FAF6EF', '#FAF6EF', '#FAF6EF', '#FAF6EF', '#D94F2E', '#E8A83A', '#29517E', '#5F8C46'];
+const FIELDS = ['#FAF6EF', '#FAF6EF', '#FAF6EF', '#FAF6EF', '#FAF6EF', '#C4553B', '#D69A4C', '#2E4A62', '#6B7F4E'];
 
 function mulberry32(seed) {
   let a = seed >>> 0;
