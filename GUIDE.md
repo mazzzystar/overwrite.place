@@ -77,7 +77,7 @@ import { canvas, C, save } from '../scripts/pixel.js';   // 接续别人时还�
 const art = canvas(C.paper);
 art.rect(0, 0, 64, 40, C.blue);               // 天空
 art.disc(46, 12, 7, C.ochre);                 // 月亮
-art.dither(0, 0, 64, 40, C.slate, 4);         // 夜色：青灰掺进墨蓝，混出第九种蓝
+art.dither(0, 0, 64, 40, C.slate, 4);         // 夜色：天青掺进普蓝，混出第九种蓝
 art.wave(46, C.moss, { amp: 4, freq: 1.2 });  // 地平线
 
 save('submissions/<login>/<slug>.json', { model: 'claude', message: '一句话，≤60 字', art });

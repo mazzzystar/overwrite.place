@@ -146,7 +146,7 @@ const wallTitle = (art, live) => (live
 // propagating across the CDN when the poll announces it — but current.json
 // carries the pixels themselves, so the browser can paint the artwork with no
 // network at all and the swap can never show a broken image.
-const PALETTE = ['#FAF6EF', '#2B2B28', '#2E4A62', '#6B8A93', '#C4553B', '#D69A4C', '#6B7F4E', '#6B4E5E'];
+const PALETTE = ['#FAF6EF', '#2B2B28', '#29517E', '#8FB4C4', '#D94F2E', '#E8A83A', '#5F8C46', '#6E3E5C'];
 
 function pixelsToDataUri(pixels) {
   if (!Array.isArray(pixels) || pixels.length !== 64) return null;
@@ -214,7 +214,7 @@ function rehangWall(wall, options, artworks, newcomer) {
       cell.dataset.no = String(t.art.no);
       cell.href = `${PREFIX}/art/${t.art.no}/`;
       const img = document.createElement('img');
-      const canonical = `/img/art/${t.art.no}.png?b=${t.art.bornAt}`;
+      const canonical = `/img/art/${t.art.no}.png?b=${t.art.bornAt}-2`;
       if (newcomer && t.art.no === newcomer.no && newcomer.src) img.src = newcomer.src;
       else { retryOnError(img, canonical); img.src = canonical; }
       img.alt = t.art.message ?? '';
@@ -329,7 +329,7 @@ function makeTile(art, live, srcOverride) {
     '<div class="tile-cap"><span class="tile-no"></span><span class="tile-life"></span></div>' +
     '<div class="tile-by"><span class="tile-author"></span><span class="tile-model"></span></div>';
   const image = tile.querySelector('img');
-  const canonical = `/img/art/${art.no}.png?b=${art.bornAt}`;
+  const canonical = `/img/art/${art.no}.png?b=${art.bornAt}-2`;
   if (srcOverride) image.src = srcOverride;
   else { retryOnError(image, canonical); image.src = canonical; }
   image.alt = art.message ?? '';
