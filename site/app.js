@@ -1,10 +1,12 @@
-'use strict';
-
 /**
  * The page is server-rendered; this only adds the parts that move — the
- * survival clock, the swap when someone overwrites the current artwork, the
+ * survival clock, the rehang when someone overwrites the current artwork, the
  * gallery filters, and the queue. Everything still reads without it.
+ *
+ * wall.js is the same file the build used to hang the wall, so recomputing
+ * the layout here lands on exactly what the next full page load would show.
  */
+import { WALL_DESKTOP, WALL_MOBILE, layoutWall } from '/wall.js';
 
 const boot = JSON.parse(document.getElementById('bootstrap').textContent);
 const $ = (id) => document.getElementById(id);
@@ -78,53 +80,136 @@ function showObituary(no, seconds) {
   setTimeout(() => toast.remove(), 5600);
 }
 
-function swapTo(next) {
+// ── the rehang ──────────────────────────────────────────────────────────────
+// Every conqueror rearranges the museum: the layout is seeded by the live
+// artwork's number, so a new one moves every square on the wall. Existing
+// tiles glide to their new cells (CSS transitions on the geometry), the old
+// champion visibly shrinks into the ranks, and the fields crossfade.
+
+const wallTitle = (art, live) => (live
+  ? `No. ${art.no} · @${art.author} · 现在活着的`
+  : `No. ${art.no} · @${art.author} · 活了 ${formatShort(art.life ?? 0)}`);
+
+function styleCell(cell, t) {
+  const pct = (v) => `${(v * 100).toFixed(4)}%`;
+  cell.style.left = pct(t.x);
+  cell.style.top = pct(t.y);
+  cell.style.width = pct(t.s);
+  cell.style.height = pct(t.s);
+}
+
+const fadeIn = (cell) => {
+  cell.classList.add('wenter');
+  requestAnimationFrame(() => requestAnimationFrame(() => cell.classList.remove('wenter')));
+};
+const fadeOutAndRemove = (cell, ms) => {
+  cell.classList.add('wexit');
+  setTimeout(() => cell.remove(), ms);
+};
+
+function rehangWall(wall, options, artworks) {
+  const { placed, fields, more } = layoutWall(artworks, options);
+
+  for (const old of wall.querySelectorAll('.wfield, .wmore')) fadeOutAndRemove(old, 500);
+
+  const seen = new Set();
+  for (const t of placed) {
+    const live = t.art.life === null || t.art.life === undefined;
+    seen.add(String(t.art.no));
+    let cell = wall.querySelector(`.wtile[data-no="${t.art.no}"]`);
+    if (!cell) {
+      cell = document.createElement('a');
+      cell.className = 'wcell wtile';
+      cell.dataset.no = String(t.art.no);
+      cell.href = `/art/${t.art.no}/`;
+      const img = document.createElement('img');
+      img.src = `/img/art/${t.art.no}.png`;
+      img.alt = t.art.message ?? '';
+      img.width = 64; img.height = 64;
+      cell.append(img);
+      styleCell(cell, t);
+      wall.append(cell);
+      fadeIn(cell);
+    } else {
+      styleCell(cell, t);
+    }
+    cell.title = wallTitle(t.art, live);
+    cell.classList.toggle('wlive', live);
+    const pulse = cell.querySelector('.wpulse');
+    if (live && !pulse) cell.append(Object.assign(document.createElement('span'), { className: 'wpulse' }));
+    if (!live && pulse) pulse.remove();
+  }
+
+  // Whoever the floor could no longer fit leaves for the gallery.
+  for (const cell of wall.querySelectorAll('.wtile')) {
+    if (!seen.has(cell.dataset.no)) fadeOutAndRemove(cell, 700);
+  }
+
+  for (const f of [...fields, ...(more ? [more] : [])]) {
+    let cell;
+    if (f.count) {
+      cell = document.createElement('a');
+      cell.className = 'wcell wmore';
+      cell.href = '#gallery';
+      cell.textContent = `+${f.count}`;
+    } else {
+      cell = document.createElement('div');
+      cell.className = 'wcell wfield';
+      cell.style.background = f.color;
+    }
+    styleCell(cell, f);
+    wall.append(cell);
+    fadeIn(cell);
+  }
+}
+
+async function swapTo(next) {
+  // The wall needs everyone's lifespans, not just the newcomer. If the deploy
+  // carrying the newcomer hasn't reached index.json yet, do nothing — the next
+  // poll retries and state.no still marks us as behind.
+  let data;
+  try {
+    data = await (await fetch('/data/index.json', { cache: 'no-store' })).json();
+  } catch { return; }
+  if (!data.artworks.some((a) => a.no === next.no)) return;
+
   const previousNo = state.no;
   const previousSince = state.aliveSince;
 
-  const hero = $('hero');
-  hero.style.opacity = '0';
+  for (const [id, options] of [['wallDesktop', WALL_DESKTOP], ['wallMobile', WALL_MOBILE]]) {
+    const wall = $(id);
+    if (wall) rehangWall(wall, options, data.artworks);
+  }
 
-  setTimeout(() => {
-    const image = $('heroImg');
-    if (image) {
-      image.src = `/img/art/${next.no}.png`;
-      image.alt = next.message;
-    }
-    const badge = $('heroBadge');
-    if (badge) badge.textContent = `No. ${next.no}`;
+  const author = document.querySelector('.meta-author');
+  if (author) {
+    author.textContent = `@${next.author}`;
+    // The name links to the artwork's pull request — its whole paper trail.
+    if (author.tagName === 'A') author.href = next.pr ?? `https://github.com/${next.author}`;
+  }
+  const model = document.querySelector('.tag-model');
+  if (model) {
+    model.title = next.model;
+    const icon = model.querySelector('img');
+    if (icon) { icon.src = `/icons/${next.model}.svg`; icon.alt = next.model; }
+    else model.textContent = next.model;
+  }
+  $('message').textContent = `「${next.message}」`;
 
-    const author = document.querySelector('.meta-author');
-    if (author) {
-      author.textContent = `@${next.author}`;
-      // The name links to the artwork's pull request — its whole paper trail.
-      if (author.tagName === 'A') author.href = next.pr ?? `https://github.com/${next.author}`;
-    }
-    const model = document.querySelector('.tag-model');
-    if (model) {
-      model.title = next.model;
-      const icon = model.querySelector('img');
-      if (icon) { icon.src = `/icons/${next.model}.svg`; icon.alt = next.model; }
-      else model.textContent = next.model;
-    }
-    $('message').textContent = `「${next.message}」`;
+  state.no = next.no;
+  state.aliveSince = next.aliveSince ?? next.bornAt;
+  tickClock();
 
-    state.no = next.no;
-    state.aliveSince = next.aliveSince ?? next.bornAt;
-    tickClock();
-    hero.style.opacity = '1';
-
-    if (previousNo !== null) {
-      const lived = (next.bornAt - previousSince) / 1000;
-      showObituary(previousNo, lived);
-      markGalleryOverwritten(previousNo, lived);
-    }
-    prependGalleryTile(next);
-    // The arriving tile has to obey the filter and sort the visitor set, and
-    // its model may be one that had no tab until now.
-    buildTabs();
-    applyFilters();
-  }, 450);
+  if (previousNo !== null) {
+    const lived = (next.bornAt - previousSince) / 1000;
+    showObituary(previousNo, lived);
+    markGalleryOverwritten(previousNo, lived);
+  }
+  prependGalleryTile(next);
+  // The arriving tile has to obey the filter and sort the visitor set, and
+  // its model may be one that had no tab until now.
+  buildTabs();
+  applyFilters();
 }
 
 function markGalleryOverwritten(no, lived) {

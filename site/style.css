@@ -142,6 +142,57 @@ img { display: block; }
   box-shadow: 0 3px 10px rgba(46, 43, 37, .2);
 }
 
+/* — the wall — */
+/* One fixed square: the live artwork biggest, the dead sized by how long they
+   held the wall, unclaimed cells flat Mondrian fields. Rehang animation is
+   nothing but CSS transitions on cell geometry — app.js moves the numbers. */
+.wall {
+  position: relative; width: min(88vw, 72vh, 720px); aspect-ratio: 1 / 1;
+  margin: 0 auto; background: var(--ink);
+  border: 6px solid var(--ink); border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(46, 43, 37, .26);
+}
+.wall .grain { z-index: 3; }
+.wcell {
+  position: absolute; box-sizing: border-box; display: block;
+  border: 3px solid var(--ink);
+  transition: left .7s cubic-bezier(.22, .9, .26, 1), top .7s cubic-bezier(.22, .9, .26, 1),
+              width .7s cubic-bezier(.22, .9, .26, 1), height .7s cubic-bezier(.22, .9, .26, 1),
+              opacity .45s ease;
+}
+.wtile img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.wtile:hover { z-index: 2; border-color: var(--color-accent); }
+.wlive { z-index: 1; }
+.wpulse {
+  position: absolute; right: 7px; top: 7px; width: 11px; height: 11px; border-radius: 999px;
+  background: var(--color-accent); border: 2px solid var(--paper);
+  animation: wpulse 2.4s ease-out infinite;
+}
+@keyframes wpulse {
+  0% { box-shadow: 0 0 0 0 rgba(198, 113, 57, .45); }
+  70%, 100% { box-shadow: 0 0 0 10px rgba(198, 113, 57, 0); }
+}
+.wmore {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ink); color: var(--paper); text-decoration: none;
+  font-family: var(--font-heading); font-size: 13px;
+}
+.wmore:hover { color: var(--color-accent); }
+.wenter, .wexit { opacity: 0; }
+.wexit { pointer-events: none; }
+.wall-mobile { display: none; }
+@media (max-width: 720px) {
+  .wall-desktop { display: none; }
+  .wall-mobile { display: block; }
+  /* .home pads 24px each side; the wall must fit inside what's left. */
+  .wall { width: min(100vw - 48px, 66vh); border-width: 4px; }
+  .wcell { border-width: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wcell { transition: none; }
+  .wpulse { animation: none; }
+}
+
 .meta { margin-top: 30px; display: flex; align-items: center; gap: 12px; font-family: var(--font-serif); font-size: 14px; color: #4a453f; }
 .meta-author { color: var(--color-text); text-decoration: none; }
 .meta-author:hover { color: var(--color-accent-700); }

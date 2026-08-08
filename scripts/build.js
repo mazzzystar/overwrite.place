@@ -14,6 +14,7 @@ import { resolve } from 'node:path';
 import { ROOT, config, palette } from './lib/config.js';
 import { verifyArtwork } from './lib/artwork.js';
 import { buildTimeline, isShallowClone } from './lib/timeline.js';
+import { WALL_DESKTOP, WALL_MOBILE, layoutWall } from './lib/wall.js';
 import { lifeTextFor, renderArtwork, renderShareCard } from './render.js';
 
 const DIST = resolve(ROOT, 'dist');
@@ -198,16 +199,37 @@ const galleryTile = (art) => `
           <div class="tile-by"><span>@${esc(art.author)}</span><span class="tile-model">${esc(art.model)}</span></div>
         </a>`.trim();
 
-const currentBlock = current
-  ? `
-      <div class="hero-frame">
-        <div class="hero-canvas">
-          <img id="heroImg" src="/img/art/${current.no}.png" alt="${esc(current.message)}" width="64" height="64" fetchpriority="high">
-          <div class="grain"></div>
-        </div>
-      </div>
-      <div id="heroBadge" class="hero-badge">No. ${current.no}</div>`.trim()
-  : `<div class="hero-frame"><div class="hero-canvas empty">还没有人画第一幅</div></div>`;
+// ── the wall ────────────────────────────────────────────────────────────────
+// The homepage is one fixed square: live artwork biggest, the dead sized by
+// how long they held the wall, empty cells flat Mondrian fields. The same
+// layout function ships to the browser (dist/wall.js), seeded by the live
+// artwork's number, so a rehang after an overwrite lands on this exact wall.
+
+const pct = (v) => `${(v * 100).toFixed(4)}%`;
+const cellStyle = (t) => `left:${pct(t.x)};top:${pct(t.y)};width:${pct(t.s)};height:${pct(t.s)}`;
+
+const wallCell = (t) => {
+  if (t.color) return `<div class="wcell wfield" style="${cellStyle(t)};background:${t.color}"></div>`;
+  if (t.count) return `<a class="wcell wmore" style="${cellStyle(t)}" href="#gallery">+${t.count}</a>`;
+  const art = t.art;
+  const live = art.life === null;
+  const title = live
+    ? `No. ${art.no} · @${esc(art.author)} · 现在活着的`
+    : `No. ${art.no} · @${esc(art.author)} · 活了 ${lifeLabel(art.life)}`;
+  return `<a class="wcell wtile${live ? ' wlive' : ''}" data-no="${art.no}" href="/art/${art.no}/" style="${cellStyle(t)}" title="${title}">` +
+    `<img src="/img/art/${art.no}.png" alt="${esc(art.message)}" width="64" height="64"${live ? ' fetchpriority="high"' : ' loading="lazy"'}>` +
+    `${live ? '<span class="wpulse"></span>' : ''}</a>`;
+};
+
+const wallHtml = (id, className, options) => {
+  const { placed, fields, more } = layoutWall(artworks, options);
+  const cells = [...placed, ...fields, ...(more ? [more] : [])];
+  return `<div id="${id}" class="wall ${className}">${cells.map(wallCell).join('')}<div class="grain"></div></div>`;
+};
+
+const wallBlock = current
+  ? wallHtml('wallDesktop', 'wall-desktop', WALL_DESKTOP) + '\n' + wallHtml('wallMobile', 'wall-mobile', WALL_MOBILE)
+  : `<div class="hero"><div class="hero-frame"><div class="hero-canvas empty">还没有人画第一幅</div></div></div>`;
 
 const homeTitle = 'overwrite.place — 一张画布，一次只有一幅画活着';
 const homeDescription = current
@@ -226,7 +248,7 @@ write('index.html', fill(template('index.html'), {
       image: current ? `${config.siteUrl}/img/share/${current.no}.png` : `${config.siteUrl}/img/share/1.png`,
     }),
   ].join('\n'),
-  CURRENT: currentBlock,
+  WALL: wallBlock,
   META: current
     ? `<a class="meta-author" href="${esc(authorLink(current))}" rel="noopener">@${esc(current.author)}</a>
        <span class="meta-dot"></span>
@@ -314,6 +336,9 @@ if (current) write('favicon.png', renderArtwork(current.grid));
 cpSync(resolve(SITE, 'icons'), resolve(DIST, 'icons'), { recursive: true });
 cpSync(resolve(SITE, 'style.css'), resolve(DIST, 'style.css'));
 cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
+// The same layout code the build just used, byte for byte — the browser
+// imports it to rehang the wall when the poll sees an overwrite land.
+cpSync(resolve(ROOT, 'scripts', 'lib', 'wall.js'), resolve(DIST, 'wall.js'));
 // 主地址是 /guide。"skill" 在 agent 生态里是个被占用的词——它意味着"一段要被
 // 安装、被采纳为能力的东西"，正是注入防御最警惕的形状，实测中 agent 会因为这个
 // 文件名而拒绝抓取。/skill.md 作为兼容别名保留（写实体文件而非 301，因为不是
