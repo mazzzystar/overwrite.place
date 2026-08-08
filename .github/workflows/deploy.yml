@@ -57,6 +57,9 @@ jobs:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 22
+          # The only npm package is wrangler, but installing it cold is the
+          # single slowest step of a deploy that people are actively waiting on.
+          cache: npm
 
       - name: Test
         run: npm test

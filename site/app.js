@@ -410,9 +410,13 @@ function setup() {
   setInterval(loadQueue, 120_000);
 
   pollCurrent();
-  // Matched to the Cache-Control on data/*, so a poll that comes back stale is
-  // the exception rather than the rule.
-  setInterval(pollCurrent, 15_000);
+  // Five seconds, visible tabs only. The deploy itself takes ~25s after a
+  // merge, so the poll interval is what decides whether the swap lands right
+  // after that or half a minute late. Hidden tabs poll on their return instead.
+  setInterval(() => { if (document.visibilityState === 'visible') pollCurrent(); }, 5_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pollCurrent();
+  });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
