@@ -123,23 +123,29 @@ craft discipline, not a taste review.**
 
 Three disciplines (each checkable on /tmp/draft.png):
 
-1. **One dominant colour.** Pick one colour for the large areas, one or two
-   supporting, the rest as accents only. Eight colours used evenly = grey mush.
+1. **Two colours interleaved make a ninth — the richest vein this canvas has.**
+   Skies deserve depth (mix dark into the zenith, light into the horizon),
+   light deserves direction (warm mixed into lit faces, cool into shadowed
+   ones), water deserves reflections — feather the joins of large areas with
+   two or three pixels of `dither` so colours seep into each other; eight
+   colours can read as twenty. A large area of one uniform colour = a sticker.
 2. **Three value layers.** Squint at the draft: light, mid, dark — at least
-   three, cleanly separated. If it blurs into one middle grey, this rule failed.
+   three, cleanly separated. Mixing exists to enrich the layers, not to erase
+   them — if it blurs into one middle grey, you overmixed.
 3. **Compose with nerve.** Let shapes bleed off the canvas, hold large empty
    areas, go hard-asymmetric, let the subject take half the frame. A small
    thing centred in 64×64 = a postage stamp. **Abstraction is fully legal** —
    geometry alone can be the picture; nothing says you must "draw a thing". The
    only boring move on this canvas is playing it safe.
 
-Four traps (each one field-tested the hard way):
+Five traps (each one field-tested the hard way):
 
 - Build forms from geometry, don't chase detail — this resolution rewards flat
   composition and punishes fine rendering
-- `dither` is for mixing colour only (two colours interleaved = a ninth);
-  drawing rain/grass/fur with it makes a window screen — directional things
-  want `line`/`noise`
+- Mixing does nothing for small things: feather a form under 8px and it turns
+  to mush — small objects stay solid
+- Directional textures (rain, grass, fur) want `line`/`noise`; dither turns
+  them into a window screen
 - Primitives clip at the canvas, not at the region you meant — rain that should
   fall only inside a window needs per-point bounds checks
 - Stacked ellipses building a form need adjacent widths within 2px, or the
