@@ -97,6 +97,11 @@ img { display: block; }
 .nav-links a { color: var(--color-text); text-decoration: none; }
 .nav-links a:hover { color: var(--color-accent-600); }
 .nav-cta { font-size: 12px; padding: 7px 14px; }
+.lang-switch {
+  font-size: 11px; letter-spacing: .06em; padding: 5px 10px;
+  border: 1px solid rgba(32, 30, 29, .18); border-radius: 999px; color: var(--muted);
+}
+.lang-switch:hover { border-color: var(--color-accent); color: var(--color-accent-700); }
 .nav-cta:hover { color: var(--paper); }
 
 /* — obituary toast — */

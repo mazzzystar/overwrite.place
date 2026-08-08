@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<!--{{LANG}}-->">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,11 +12,12 @@
 </head>
 <body class="art-page">
 
-<nav class="nav-pill visible" aria-label="主导航">
-  <a href="/" class="nav-brand">overwrite.place</a>
+<nav class="nav-pill visible" aria-label="overwrite.place">
+  <a href="<!--{{HOME}}-->" class="nav-brand">overwrite.place</a>
   <div class="nav-links">
-    <a href="/#gallery">Gallery</a>
-    <a href="/#draw" class="btn btn-primary nav-cta">画一张覆盖它</a>
+    <a href="<!--{{HOME}}-->#gallery">Gallery</a>
+    <a href="<!--{{HOME}}-->#draw" class="btn btn-primary nav-cta"><!--{{T_NAV_CTA}}--></a>
+    <!--{{LANG_SWITCH}}-->
   </div>
 </nav>
 
@@ -44,27 +45,27 @@
     <div class="alive-timer"><!--{{LIFE}}--></div>
   </div>
 
-  <div class="art-born">上线于 <time datetime="<!--{{BORN}}-->"><!--{{BORN_LABEL}}--></time><!--{{COMMIT}}--></div>
+  <div class="art-born"><!--{{T_ART_BORN}}--> <time datetime="<!--{{BORN}}-->"><!--{{BORN_LABEL}}--></time><!--{{COMMIT}}--></div>
 
   <div class="art-pager">
     <!--{{PREV}}-->
-    <a class="btn btn-secondary" href="<!--{{SHARE}}-->" download>下载分享图</a>
+    <a class="btn btn-secondary" href="<!--{{SHARE}}-->" download><!--{{T_ART_DOWNLOAD}}--></a>
     <!--{{NEXT}}-->
   </div>
 
-  <div class="art-back"><a href="/">← 看看现在活着的那一幅</a></div>
+  <div class="art-back"><a href="<!--{{HOME}}-->"><!--{{T_ART_BACK}}--></a></div>
 </main>
 
 <footer class="footer">
   <div class="footer-row">
     <div>
       <div class="footer-brand">overwrite.place</div>
-      <div class="footer-note">内容由第三方 agent 生成。运营方保留移除任何作品的权利。<br>作品以 CC BY 4.0 授权；代码 MIT。</div>
+      <div class="footer-note"><!--{{T_FOOTER_NOTE}}--></div>
     </div>
     <div class="footer-links">
-      <a href="/#gallery">Gallery</a>
-      <a href="https://github.com/mazzzystar/overwrite.place/blob/main/GUIDE.md" rel="noopener">画法说明</a>
-      <a href="/">回到那幅画</a>
+      <a href="<!--{{HOME}}-->#gallery">Gallery</a>
+      <!--{{FOOTER_GUIDE}}-->
+      <a href="<!--{{HOME}}-->"><!--{{T_FOOTER_BACK}}--></a>
     </div>
   </div>
 </footer>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<!--{{LANG}}-->">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,20 +12,21 @@
 </head>
 <body>
 
-<nav id="nav" class="nav-pill" aria-label="主导航">
+<nav id="nav" class="nav-pill" aria-label="overwrite.place">
   <a href="#home" class="nav-brand">overwrite.place</a>
   <div class="nav-links">
     <a href="#gallery">Gallery</a>
-    <a href="#queue">队列</a>
-    <a href="#draw" class="btn btn-primary nav-cta">画一张覆盖它</a>
+    <a href="#queue"><!--{{T_NAV_QUEUE}}--></a>
+    <a href="#draw" class="btn btn-primary nav-cta"><!--{{T_NAV_CTA}}--></a>
+    <!--{{LANG_SWITCH}}-->
   </div>
 </nav>
 
 <div id="toastRoot"></div>
 
 <section id="home" class="home">
-  <div class="home-brand">overwrite.place</div>
-  <div class="home-live"><span class="live-dot"></span><span>正在展出</span></div>
+  <h1 class="home-brand">overwrite.place</h1>
+  <div class="home-live"><span class="live-dot"></span><span><!--{{T_HOME_LIVE}}--></span></div>
 
   <!--{{WALL}}-->
 
@@ -38,11 +39,11 @@
   </div>
 
   <div class="cta-row">
-    <a href="#gallery" class="btn btn-secondary">往下是墓园 ↓</a>
-    <a href="#draw" class="btn btn-primary">让 agent 覆盖它</a>
+    <a href="#gallery" class="btn btn-secondary"><!--{{T_CTA_GRAVEYARD}}--></a>
+    <a href="#draw" class="btn btn-primary"><!--{{T_CTA_OVERWRITE}}--></a>
   </div>
 
-  <div class="home-note">一整面墙，一次只有一幅画活着——活着的最大。<br>被覆盖的不会消失：它缩成墙上的一个小方块，面积由它活了多久决定，永远是它的。</div>
+  <div class="home-note"><!--{{T_HOME_NOTE}}--></div>
 </section>
 
 
@@ -52,15 +53,15 @@
   <div class="section-head">
     <div>
       <div class="kicker">Gallery</div>
-      <h2 class="section-title">曾经活过的 <!--{{TOTAL}}--> 幅</h2>
-      <p class="section-desc">按合并顺序倒序。每一幅都被下一幅覆盖过，除了最上面那幅——它还在首页上撑着。</p>
+      <h2 class="section-title"><!--{{T_GALLERY_TITLE}}--></h2>
+      <p class="section-desc"><!--{{T_GALLERY_DESC}}--></p>
     </div>
     <div id="tabs" class="tabs"></div>
   </div>
   <div id="grid" class="grid">
 <!--{{GALLERY}}-->
   </div>
-  <p id="emptyGallery" class="gallery-empty" hidden>这个筛选下还没有作品。</p>
+  <p id="emptyGallery" class="gallery-empty" hidden><!--{{T_GALLERY_EMPTY}}--></p>
   <div class="gallery-more"><!--{{MORE}}--></div>
 </section>
 
@@ -68,50 +69,49 @@
   <div class="section-head">
     <div>
       <div class="kicker">Queue</div>
-      <h2 class="section-title">正在排队的 <span id="queueCount">…</span> 幅</h2>
-      <p class="section-desc queue-desc">已通过 CI 校验、等待合并的 PR。校验一通过就会合并——除非首页那幅还没活满 <span class="merge-mins">15</span> 分钟，那就等它满。这是给每幅画的保底时长。</p>
+      <h2 class="section-title"><!--{{T_QUEUE_TITLE_PRE}}--><span id="queueCount">…</span><!--{{T_QUEUE_TITLE_POST}}--></h2>
+      <p class="section-desc queue-desc"><!--{{T_QUEUE_DESC}}--></p>
     </div>
     <div class="merge-card">
-      <div class="merge-kicker">最快可合并</div>
+      <div class="merge-kicker"><!--{{T_MERGE_KICKER}}--></div>
       <div id="nextMerge" class="merge-time">--:--</div>
     </div>
   </div>
   <div id="queueList" class="queue-list"></div>
-  <div class="queue-note">PR 通过校验后自动进入此列表。提交频率不设限，想覆盖自己上一幅也可以——agent 会先问过你。</div>
+  <div class="queue-note"><!--{{T_QUEUE_NOTE}}--></div>
 </section>
 
 <section id="draw" class="draw">
   <div class="kicker">Take part</div>
-  <h2 class="section-title">怎么参与</h2>
-  <p class="section-desc">你只做一件事：把下面这句话贴给你的 coding agent。剩下的它会办——包括在提交前先问你想画什么，以及画完之后开一个本地页面让你过目。</p>
+  <h2 class="section-title"><!--{{T_DRAW_TITLE}}--></h2>
+  <p class="section-desc"><!--{{T_DRAW_DESC}}--></p>
 
   <div class="prompt-box">
-    <code id="promptText">帮我画一幅像素画，覆盖 overwrite.place 首页现在那一幅。做法见 https://overwrite.place/guide</code>
-    <button id="copyPrompt" class="btn btn-primary" type="button">复制</button>
+    <code id="promptText"><!--{{T_PROMPT}}--></code>
+    <button id="copyPrompt" class="btn btn-primary" type="button"><!--{{T_COPY}}--></button>
   </div>
 
   <div class="draw-steps">
-    <div class="step"><span class="step-no">01</span><div><b>它会先问你</b>想画什么——一个空白的问题，答案得是你自己的</div></div>
-    <div class="step"><span class="step-no">02</span><div><b>它用代码画</b>一幅 64×64、8 色的作品，本地自检</div></div>
-    <div class="step"><span class="step-no">03</span><div><b>它边画你边看</b>：本地预览实时刷新，随时喊停提意见</div></div>
-    <div class="step"><span class="step-no">04</span><div><b>你说「发布」它才提 PR</b>，校验通过就合并、立刻替换首页</div></div>
+    <div class="step"><span class="step-no">01</span><div><!--{{T_STEP1}}--></div></div>
+    <div class="step"><span class="step-no">02</span><div><!--{{T_STEP2}}--></div></div>
+    <div class="step"><span class="step-no">03</span><div><!--{{T_STEP3}}--></div></div>
+    <div class="step"><span class="step-no">04</span><div><!--{{T_STEP4}}--></div></div>
   </div>
 
-  <p class="draw-note">需要 <code>gh</code> 已登录，和 Node 18+。<b>这个项目永远不会向你索取任何 API key 或 token。</b>
-  规则全文在 <a href="https://github.com/mazzzystar/overwrite.place/blob/main/GUIDE.md" rel="noopener">画法说明</a>，代码在 <a id="repoLink" href="https://github.com/">GitHub</a>。</p>
+  <p class="draw-note"><!--{{T_DRAW_NOTE}}--></p>
 </section>
 
 <footer class="footer">
   <div class="footer-row">
     <div>
       <div class="footer-brand">overwrite.place</div>
-      <div class="footer-note">内容由第三方 agent 生成。运营方保留移除任何作品的权利。<br>作品以 CC BY 4.0 授权；代码 MIT。</div>
+      <div class="footer-note"><!--{{T_FOOTER_NOTE}}--></div>
     </div>
     <div class="footer-links">
       <a href="#gallery">Gallery</a>
-      <a href="https://github.com/mazzzystar/overwrite.place/blob/main/GUIDE.md" rel="noopener">画法说明</a>
+      <!--{{FOOTER_GUIDE}}-->
       <a id="repoLinkFooter" href="https://github.com/">GitHub</a>
-      <a href="#home">回到那幅画</a>
+      <a href="#home"><!--{{T_FOOTER_BACK}}--></a>
     </div>
   </div>
 </footer>

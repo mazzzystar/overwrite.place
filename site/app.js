@@ -11,6 +11,56 @@ import { WALL_DESKTOP, WALL_MOBILE, layoutWall } from '/wall.js';
 const boot = JSON.parse(document.getElementById('bootstrap').textContent);
 const $ = (id) => document.getElementById(id);
 
+// Which mirror this page belongs to. Every string the script ever paints and
+// every link it ever builds has to stay inside the same language.
+const ZH = (document.documentElement.lang || 'zh').startsWith('zh');
+const PREFIX = ZH ? '' : '/en';
+const L = ZH ? {
+  stillShowing: '仍在展出',
+  aliveNow: '现在活着的',
+  survived: (t) => `活了 ${t}`,
+  obituaryTitle: (no, t) => `No. ${no} 存活了 ${t}`,
+  obituaries: [
+    '死于一次例行合并。无痛。',
+    '它撑过了午休，没撑过下班。',
+    '被一个刚睡醒的 agent 顶掉了。',
+    '生前无人点赞，死后进入永久馆藏。',
+    '如果它半夜上线，本可以再活六小时。',
+  ],
+  anyMoment: '随时',
+  queueEmpty: '现在没有人排队。下一个提交的作品会直接上线。',
+  queueError: '暂时拿不到队列（GitHub API 限流或网络问题）。稍后再看。',
+  etaKicker: '预计上线',
+  etaNext: '下一次校验通过后',
+  etaMinutes: (m) => `约 ${m} 分钟后`,
+  loading: '载入中…',
+  loadFailed: '载入失败，再试一次',
+  copied: '已复制',
+  copyManually: '手动复制吧',
+} : {
+  stillShowing: 'Still on the wall',
+  aliveNow: 'alive now',
+  survived: (t) => `survived ${t}`,
+  obituaryTitle: (no, t) => `No. ${no} survived ${t}`,
+  obituaries: [
+    'Died in a routine merge. Painless.',
+    'Survived lunch. Not the evening.',
+    'Bumped by an agent that just woke up.',
+    'No likes while alive; permanent collection once dead.',
+    'Had it shipped at midnight, six more hours.',
+  ],
+  anyMoment: 'any moment',
+  queueEmpty: 'Nobody in line. The next verified artwork goes straight up.',
+  queueError: "Can't reach the queue right now (GitHub API limit or network). Check back later.",
+  etaKicker: 'Goes up',
+  etaNext: 'after the next verification',
+  etaMinutes: (m) => `in ~${m} min`,
+  loading: 'Loading…',
+  loadFailed: 'Failed — try again',
+  copied: 'Copied',
+  copyManually: 'Copy it manually',
+};
+
 const state = {
   no: boot.current ? boot.current.no : null,
   // Not bornAt: an artwork that returned to the wall after the one above it was
@@ -28,9 +78,14 @@ function formatLife(seconds) {
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n) => String(n).padStart(2, '0');
-  if (days > 0) return `${days} 天 ${pad(hours)} 小时 ${pad(minutes)} 分`;
-  if (hours > 0) return `${hours} 小时 ${pad(minutes)} 分 ${pad(secs)} 秒`;
-  return `${minutes} 分 ${pad(secs)} 秒`;
+  if (ZH) {
+    if (days > 0) return `${days} 天 ${pad(hours)} 小时 ${pad(minutes)} 分`;
+    if (hours > 0) return `${hours} 小时 ${pad(minutes)} 分 ${pad(secs)} 秒`;
+    return `${minutes} 分 ${pad(secs)} 秒`;
+  }
+  if (days > 0) return `${days}d ${pad(hours)}h ${pad(minutes)}m`;
+  if (hours > 0) return `${hours}h ${pad(minutes)}m ${pad(secs)}s`;
+  return `${minutes}m ${pad(secs)}s`;
 }
 
 function formatShort(seconds) {
@@ -38,9 +93,14 @@ function formatShort(seconds) {
   const days = Math.floor(total / 86400);
   const hours = Math.floor((total % 86400) / 3600);
   const minutes = Math.floor((total % 3600) / 60);
-  if (days > 0) return `${days} 天 ${hours} 小时`;
-  if (hours > 0) return `${hours} 小时 ${minutes} 分`;
-  return `${minutes} 分`;
+  if (ZH) {
+    if (days > 0) return `${days} 天 ${hours} 小时`;
+    if (hours > 0) return `${hours} 小时 ${minutes} 分`;
+    return `${minutes} 分`;
+  }
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 function tickClock() {
@@ -49,14 +109,6 @@ function tickClock() {
 }
 
 // ── the swap ────────────────────────────────────────────────────────────────
-
-const OBITUARIES = [
-  '死于一次例行合并。无痛。',
-  '它撑过了午休，没撑过下班。',
-  '被一个刚睡醒的 agent 顶掉了。',
-  '生前无人点赞，死后进入永久馆藏。',
-  '如果它半夜上线，本可以再活六小时。',
-];
 
 function showObituary(no, seconds) {
   const root = $('toastRoot');
@@ -69,11 +121,11 @@ function showObituary(no, seconds) {
 
   const title = document.createElement('div');
   title.className = 'toast-title';
-  title.textContent = `No. ${no} 存活了 ${formatShort(seconds)}`;
+  title.textContent = L.obituaryTitle(no, formatShort(seconds));
 
   const line = document.createElement('div');
   line.className = 'toast-line';
-  line.textContent = OBITUARIES[no % OBITUARIES.length];
+  line.textContent = L.obituaries[no % L.obituaries.length];
 
   toast.append(kicker, title, line);
   root.replaceChildren(toast);
@@ -87,8 +139,8 @@ function showObituary(no, seconds) {
 // champion visibly shrinks into the ranks, and the fields crossfade.
 
 const wallTitle = (art, live) => (live
-  ? `No. ${art.no} · @${art.author} · 现在活着的`
-  : `No. ${art.no} · @${art.author} · 活了 ${formatShort(art.life ?? 0)}`);
+  ? `No. ${art.no} · @${art.author} · ${L.aliveNow}`
+  : `No. ${art.no} · @${art.author} · ${L.survived(formatShort(art.life ?? 0))}`);
 
 function styleCell(cell, t) {
   const pct = (v) => `${(v * 100).toFixed(4)}%`;
@@ -121,7 +173,7 @@ function rehangWall(wall, options, artworks) {
       cell = document.createElement('a');
       cell.className = 'wcell wtile';
       cell.dataset.no = String(t.art.no);
-      cell.href = `/art/${t.art.no}/`;
+      cell.href = `${PREFIX}/art/${t.art.no}/`;
       const img = document.createElement('img');
       img.src = `/img/art/${t.art.no}.png`;
       img.alt = t.art.message ?? '';
@@ -225,7 +277,7 @@ function markGalleryOverwritten(no, lived) {
 function makeTile(art, live) {
   const tile = document.createElement('a');
   tile.className = `tile${live ? ' live' : ''}`;
-  tile.href = `/art/${art.no}/`;
+  tile.href = `${PREFIX}/art/${art.no}/`;
   tile.dataset.model = art.model;
   tile.dataset.no = String(art.no);
   tile.dataset.born = String(art.bornAt);
@@ -238,7 +290,7 @@ function makeTile(art, live) {
   image.src = `/img/art/${art.no}.png`;
   image.alt = art.message ?? '';
   tile.querySelector('.tile-no').textContent = `No. ${art.no}`;
-  tile.querySelector('.tile-life').textContent = live ? '仍在展出' : formatShort(art.life ?? 0);
+  tile.querySelector('.tile-life').textContent = live ? L.stillShowing : formatShort(art.life ?? 0);
   tile.querySelector('.tile-author').textContent = `@${art.author}`;
   tile.querySelector('.tile-model').textContent = art.model;
   return tile;
@@ -261,7 +313,7 @@ function loadWholeGallery() {
   if (loading) return loading;
 
   const button = $('loadMore');
-  if (button) { button.disabled = true; button.textContent = '载入中…'; }
+  if (button) { button.disabled = true; button.textContent = L.loading; }
 
   loading = fetch('/data/index.json', { cache: 'no-store' })
     .then((response) => response.json())
@@ -279,7 +331,7 @@ function loadWholeGallery() {
       applyFilters();
     })
     .catch(() => {
-      if (button) { button.disabled = false; button.textContent = '载入失败，再试一次'; }
+      if (button) { button.disabled = false; button.textContent = L.loadFailed; }
       loading = null;
     });
 
@@ -388,7 +440,7 @@ function tickMergeClock() {
   if (!node) return;
   const remaining = nextMergeIn();
   if (remaining <= 0) {
-    node.textContent = '随时';
+    node.textContent = L.anyMoment;
     return;
   }
   const mm = String(Math.floor(remaining / 60_000)).padStart(2, '0');
@@ -415,7 +467,7 @@ async function loadQueue() {
     if (verified.length === 0) {
       list.replaceChildren(Object.assign(document.createElement('p'), {
         className: 'queue-empty',
-        textContent: '现在没有人排队。下一个提交的作品会直接上线。',
+        textContent: L.queueEmpty,
       }));
       return;
     }
@@ -428,21 +480,21 @@ async function loadQueue() {
       row.innerHTML =
         '<div class="queue-pos"></div><img class="queue-avatar" alt="" width="30" height="30" loading="lazy">' +
         '<div class="queue-who"><div class="queue-author"></div><div class="queue-message"></div></div>' +
-        '<div class="queue-eta"><div class="queue-eta-kicker">预计上线</div><div class="queue-eta-time"></div></div>';
+        `<div class="queue-eta"><div class="queue-eta-kicker">${L.etaKicker}</div><div class="queue-eta-time"></div></div>`;
       row.querySelector('.queue-pos').textContent = String(i + 1).padStart(2, '0');
       row.querySelector('.queue-avatar').src = `${pr.user.avatar_url}&s=60`;
       row.querySelector('.queue-author').textContent = `@${pr.user.login}`;
       row.querySelector('.queue-message').textContent = pr.title;
       const waitMinutes = boot.mergeIntervalMinutes * i + Math.ceil(nextMergeIn() / 60_000);
       row.querySelector('.queue-eta-time').textContent =
-        waitMinutes <= 0 ? '下一次校验通过后' : `约 ${waitMinutes} 分钟后`;
+        waitMinutes <= 0 ? L.etaNext : L.etaMinutes(waitMinutes);
       return row;
     }));
   } catch {
     $('queueCount').textContent = '?';
     list.replaceChildren(Object.assign(document.createElement('p'), {
       className: 'queue-empty',
-      textContent: '暂时拿不到队列（GitHub API 限流或网络问题）。稍后再看。',
+      textContent: L.queueError,
     }));
   }
 }
@@ -464,12 +516,12 @@ function setup() {
       // Feedback first, then the async work. A clipboard call that stalls or
       // rejects must not be able to swallow the visual response to the click.
       copy.classList.add('btn-copied');
-      copy.textContent = '已复制';
-      setTimeout(() => { copy.textContent = '复制'; copy.classList.remove('btn-copied'); }, 1600);
+      copy.textContent = L.copied;
+      setTimeout(() => { copy.textContent = ZH ? '复制' : 'Copy'; copy.classList.remove('btn-copied'); }, 1600);
       try {
         await navigator.clipboard.writeText($('promptText').textContent.trim());
       } catch {
-        if (copy.classList.contains('btn-copied')) copy.textContent = '手动复制吧';
+        if (copy.classList.contains('btn-copied')) copy.textContent = L.copyManually;
       }
     });
   }

@@ -164,19 +164,19 @@ const PAGE = `<!DOCTYPE html>
 <body>
   <header>
     <span class="kicker">Local preview</span>
-    <h1>这幅画会覆盖掉现在首页上那一幅</h1>
+    <h1 id="pageTitle">这幅画会覆盖掉现在首页上那一幅</h1>
   </header>
   <div class="path" id="path"></div>
 
   <div class="stage">
     <div class="slot">
-      <div class="label">现在活着的</div>
+      <div class="label" id="labelLive">现在活着的</div>
       <div class="frame"><canvas id="liveCanvas" width="64" height="64"></canvas><div class="grain"></div></div>
       <div class="meta" id="liveMeta"></div>
     </div>
     <div class="arrow">→</div>
     <div class="slot">
-      <div class="label">你的草稿</div>
+      <div class="label" id="labelDraft">你的草稿</div>
       <div class="frame draft"><canvas id="draftCanvas" width="64" height="64"></canvas><div class="grain"></div></div>
       <div class="meta" id="draftMeta"></div>
     </div>
@@ -190,8 +190,8 @@ const PAGE = `<!DOCTYPE html>
   </div>
 
   <footer id="foot">
-    <span class="pulse"></span>改了文件这一页会自己更新，不用刷新。<br>
-    满意就点「就这幅了，发布」，或回到对话里告诉你的 agent <kbd>发布</kbd>。在那之前它不会提交任何东西。
+    <span class="pulse"></span><span id="foot1">改了文件这一页会自己更新，不用刷新。</span><br>
+    <span id="foot2">满意就点「就这幅了，发布」，或回到对话里告诉你的 agent <kbd>发布</kbd>。在那之前它不会提交任何东西。</span>
   </footer>
 
 <script>
@@ -213,6 +213,54 @@ function paint(canvas, pixels) {
 
 const el = (id) => document.getElementById(id);
 let lastRevision = null;
+
+// The page follows the human's browser, independent of what language the
+// agent read the guide in — the two often differ on one machine.
+const EN = !/^zh/i.test(navigator.language || '');
+const PL = EN ? {
+  title: 'This artwork will overwrite the one on the homepage',
+  labelLive: 'On the wall now',
+  labelDraft: 'Your draft',
+  loading: 'Reading…',
+  pass: '✓ Verified — ready to submit',
+  fail: (n) => '✗ Not yet — ' + n + ' problem' + (n > 1 ? 's' : ''),
+  liveDown: "Can't reach the live site. It may not be up yet, or you're offline.",
+  approve: 'Publish it',
+  rethink: 'Let me think',
+  foot1: 'Edit the file and this page updates itself — no refreshing.',
+  foot2: 'Happy with it? Click “Publish it”, or tell your agent <kbd>publish</kbd> in the chat. Nothing is submitted before that.',
+  closeMe: 'You can close this page.',
+  donePublish: '✓ Your agent has been told. Back to the terminal — watch it open the PR.',
+  doneRevise: 'Told your agent you want another pass. Back in the terminal, say what to change.',
+  doneDead: "Couldn't send — this preview may have closed. Just tell your agent in the terminal.",
+} : {
+  title: '这幅画会覆盖掉现在首页上那一幅',
+  labelLive: '现在活着的',
+  labelDraft: '你的草稿',
+  loading: '读取中…',
+  pass: '✓ 通过校验，可以提交',
+  fail: (n) => '✗ 还不能提交，有 ' + n + ' 个问题',
+  liveDown: '连不上线上站点。可能还没上线，也可能你在离线状态。',
+  approve: '就这幅了，发布',
+  rethink: '再想想',
+  foot1: '改了文件这一页会自己更新，不用刷新。',
+  foot2: '满意就点「就这幅了，发布」，或回到对话里告诉你的 agent <kbd>发布</kbd>。在那之前它不会提交任何东西。',
+  closeMe: '这一页可以关了。',
+  donePublish: '✓ 已经告诉 agent。回到终端，看着它把 PR 开出来。',
+  doneRevise: '已经告诉 agent 你想再改改。回到终端说说想改哪里。',
+  doneDead: '没送出去——这个预览可能已经关了。回到终端直接跟 agent 说吧。',
+};
+if (EN) {
+  document.title = 'Preview · overwrite.place';
+  el('pageTitle').textContent = PL.title;
+  el('labelLive').textContent = PL.labelLive;
+  el('labelDraft').textContent = PL.labelDraft;
+  el('status').textContent = PL.loading;
+  el('approve').textContent = PL.approve;
+  el('rethink').textContent = PL.rethink;
+  el('foot1').textContent = PL.foot1;
+  el('foot2').innerHTML = PL.foot2;
+}
 
 function renderMeta(node, { author, model, message }) {
   node.replaceChildren();
@@ -243,7 +291,7 @@ async function tick() {
   } else if (state.live.state === 'unavailable') {
     el('liveCanvas').style.opacity = '.25';
     el('liveMeta').replaceChildren(Object.assign(document.createElement('div'),
-      { className: 'empty', textContent: '连不上线上站点。可能还没上线，也可能你在离线状态。' }));
+      { className: 'empty', textContent: PL.liveDown }));
   }
 
   const draft = state.draft;
@@ -264,12 +312,12 @@ async function tick() {
   if (approve) approve.disabled = !draft.ok;
 
   if (draft.ok) {
-    status.textContent = '✓ 通过校验，可以提交';
+    status.textContent = PL.pass;
     for (const warning of draft.warnings) {
       detail.append(Object.assign(document.createElement('div'), { className: 'warn', textContent: '! ' + warning }));
     }
   } else {
-    status.textContent = '✗ 还不能提交，有 ' + draft.errors.length + ' 个问题';
+    status.textContent = PL.fail(draft.errors.length);
     const list = document.createElement('ol');
     for (const error of draft.errors) {
       const item = document.createElement('li');
@@ -313,12 +361,10 @@ async function decide(choice) {
   const done = document.createElement('div');
   done.className = 'done serif';
   done.textContent = status !== 200
-    ? '没送出去——这个预览可能已经关了。回到终端直接跟 agent 说吧。'
-    : choice === 'publish'
-      ? '✓ 已经告诉 agent。回到终端，看着它把 PR 开出来。'
-      : '已经告诉 agent 你想再改改。回到终端说说想改哪里。';
+    ? PL.doneDead
+    : choice === 'publish' ? PL.donePublish : PL.doneRevise;
   el('actions').replaceWith(done);
-  if (status === 200) el('foot').textContent = '这一页可以关了。';
+  if (status === 200) el('foot').textContent = PL.closeMe;
 }
 
 el('approve').addEventListener('click', () => decide('publish'));
@@ -368,11 +414,15 @@ function handleDecision(req, res) {
     if (parsed.choice === 'publish') {
       console.log('  ──────────────────────────────────────────');
       console.log('  人类在预览页点了「就这幅了，发布」。');
+      console.log('  The human clicked "Publish it" on the preview page.');
       console.log('  这等同于他说「发布」——按第 6 步开 PR。');
+      console.log('  That IS the publish confirmation — proceed to step 6.');
       console.log('  ──────────────────────────────────────────');
     } else {
       console.log('  人类在预览页点了「再想想」。');
+      console.log('  The human clicked "Let me think" on the preview page.');
       console.log('  回到对话里问他想改哪里；改完重新开预览。');
+      console.log('  Ask what to change, then reopen the preview.');
     }
     console.log('');
     // Let the response flush before the process goes away.

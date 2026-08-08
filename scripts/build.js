@@ -15,6 +15,7 @@ import { ROOT, config, palette } from './lib/config.js';
 import { verifyArtwork } from './lib/artwork.js';
 import { buildTimeline, isShallowClone } from './lib/timeline.js';
 import { WALL_DESKTOP, WALL_MOBILE, layoutWall } from './lib/wall.js';
+import { LANGS, T, lifeLabelFor } from './lib/i18n.js';
 import { lifeTextFor, renderArtwork, renderShareCard } from './render.js';
 
 const DIST = resolve(ROOT, 'dist');
@@ -192,10 +193,10 @@ const ogTags = ({ title, description, url, image }) => [
   `<meta name="twitter:image" content="${esc(image)}">`,
 ].join('\n');
 
-const galleryTile = (art) => `
-        <a class="tile${art.no === current?.no ? ' live' : ''}" href="/art/${art.no}/" data-model="${esc(art.model)}" data-no="${art.no}" data-life="${art.life ?? ''}" data-born="${art.bornAt}">
+const galleryTile = (art, lang, prefix) => `
+        <a class="tile${art.no === current?.no ? ' live' : ''}" href="${prefix}/art/${art.no}/" data-model="${esc(art.model)}" data-no="${art.no}" data-life="${art.life ?? ''}" data-born="${art.bornAt}">
           <div class="tile-frame"><img src="/img/art/${art.no}.png" alt="${esc(art.message)}" loading="lazy" width="64" height="64"></div>
-          <div class="tile-cap"><span class="tile-no">No. ${art.no}</span><span class="tile-life">${art.no === current?.no ? '仍在展出' : esc(lifeLabel(art.life))}</span></div>
+          <div class="tile-cap"><span class="tile-no">No. ${art.no}</span><span class="tile-life">${art.no === current?.no ? T[lang].artAlive : esc(lifeLabelFor(lang, art.life))}</span></div>
           <div class="tile-by"><span>@${esc(art.author)}</span><span class="tile-model">${esc(art.model)}</span></div>
         </a>`.trim();
 
@@ -208,73 +209,139 @@ const galleryTile = (art) => `
 const pct = (v) => `${(v * 100).toFixed(4)}%`;
 const cellStyle = (t) => `left:${pct(t.x)};top:${pct(t.y)};width:${pct(t.s)};height:${pct(t.s)}`;
 
-const wallCell = (t) => {
+const wallCell = (t, lang, prefix) => {
   if (t.color) return `<div class="wcell wfield" style="${cellStyle(t)};background:${t.color}"></div>`;
   if (t.count) return `<a class="wcell wmore" style="${cellStyle(t)}" href="#gallery">+${t.count}</a>`;
   const art = t.art;
   const live = art.life === null;
   const title = live
-    ? `No. ${art.no} · @${esc(art.author)} · 现在活着的`
-    : `No. ${art.no} · @${esc(art.author)} · 活了 ${lifeLabel(art.life)}`;
-  return `<a class="wcell wtile${live ? ' wlive' : ''}" data-no="${art.no}" href="/art/${art.no}/" style="${cellStyle(t)}" title="${title}">` +
+    ? (lang === 'zh' ? `No. ${art.no} · @${esc(art.author)} · 现在活着的` : `No. ${art.no} · @${esc(art.author)} · alive now`)
+    : (lang === 'zh'
+      ? `No. ${art.no} · @${esc(art.author)} · 活了 ${lifeLabelFor('zh', art.life)}`
+      : `No. ${art.no} · @${esc(art.author)} · survived ${lifeLabelFor('en', art.life)}`);
+  return `<a class="wcell wtile${live ? ' wlive' : ''}" data-no="${art.no}" href="${prefix}/art/${art.no}/" style="${cellStyle(t)}" title="${title}">` +
     `<img src="/img/art/${art.no}.png" alt="${esc(art.message)}" width="64" height="64"${live ? ' fetchpriority="high"' : ' loading="lazy"'}>` +
     `${live ? '<span class="wpulse"></span>' : ''}</a>`;
 };
 
-const wallHtml = (id, className, options) => {
+const wallHtml = (id, className, options, lang, prefix) => {
   const { placed, fields, more } = layoutWall(artworks, options);
   const cells = [...placed, ...fields, ...(more ? [more] : [])];
-  return `<div id="${id}" class="wall ${className}">${cells.map(wallCell).join('')}<div class="grain"></div></div>`;
+  return `<div id="${id}" class="wall ${className}">${cells.map((t) => wallCell(t, lang, prefix)).join('')}<div class="grain"></div></div>`;
 };
 
-const wallBlock = current
-  ? wallHtml('wallDesktop', 'wall-desktop', WALL_DESKTOP) + '\n' + wallHtml('wallMobile', 'wall-mobile', WALL_MOBILE)
-  : `<div class="hero"><div class="hero-frame"><div class="hero-canvas empty">还没有人画第一幅</div></div></div>`;
+const wallBlock = (lang, prefix) => (current
+  ? wallHtml('wallDesktop', 'wall-desktop', WALL_DESKTOP, lang, prefix) + '\n'
+    + wallHtml('wallMobile', 'wall-mobile', WALL_MOBILE, lang, prefix)
+  : `<div class="hero"><div class="hero-frame"><div class="hero-canvas empty">${lang === 'zh' ? '还没有人画第一幅' : 'No one has drawn the first one yet'}</div></div></div>`);
 
-const homeTitle = 'overwrite.place — 一张画布，一次只有一幅画活着';
-const homeDescription = current
-  ? `No. ${current.no}「${current.message}」— @${current.author} · ${current.model}。下一幅合并的作品会覆盖它。`
-  : '一张画布，一次只有一幅画能活着。你的 agent 画完一整幅，替换掉上一个人的。';
+// ── two languages, two full static mirrors ──────────────────────────────────
+// 中文 at /, English under /en/. A crawler gets complete pages in both;
+// a first-time visitor gets bounced to their browser's language by the inline
+// script below; an explicit choice via the nav switcher is stored and wins.
 
-write('index.html', fill(template('index.html'), {
-  HEAD: [
-    `<title>${esc(homeTitle)}</title>`,
-    `<meta name="description" content="${esc(homeDescription)}">`,
-    `<link rel="canonical" href="${config.siteUrl}/">`,
-    ogTags({
-      title: homeTitle,
-      description: homeDescription,
-      url: `${config.siteUrl}/`,
-      image: current ? `${config.siteUrl}/img/share/${current.no}.png` : `${config.siteUrl}/img/share/1.png`,
-    }),
-  ].join('\n'),
-  WALL: wallBlock,
-  META: current
-    ? `<a class="meta-author" href="${esc(authorLink(current))}" rel="noopener">@${esc(current.author)}</a>
-       <span class="meta-dot"></span>
-       ${modelBadge(current.model)}`
-    : '',
-  MESSAGE: current ? `「${esc(current.message)}」` : '',
-  TOTAL: String(artworks.length),
-  // Only the newest page is server-rendered. At 1500 artworks the full grid was
-  // 13,600 DOM nodes and a quarter-second freeze on every filter click; the
-  // rest now arrives from data/index.json when asked for. Crawlers still reach
-  // every artwork — sitemap.xml lists them all, and each has its own page.
-  GALLERY: newest.slice(0, GALLERY_PAGE).map(galleryTile).join('\n'),
-  MORE: artworks.length > GALLERY_PAGE
-    ? `<button id="loadMore" class="btn btn-secondary" type="button">还有 ${artworks.length - GALLERY_PAGE} 幅，全部展开</button>`
-    : '',
-  BOOTSTRAP: JSON.stringify({
-    repo: config.repo,
-    mergeIntervalMinutes: config.queue.mergeIntervalMinutes,
-    current: current ? { no: current.no, aliveSince: current.aliveSince } : null,
-    galleryRendered: newest.slice(0, GALLERY_PAGE).length,
-    galleryTotal: artworks.length,
-    // Every model that appears anywhere in the gallery, not only on the first
-    // page — otherwise a filter would be missing from the tabs entirely.
-    models: [...new Set(artworks.map((art) => art.model))].sort(),
-  }).replace(/</g, '\\u003c'),
-}));
+const pagePath = (lang, path) => `${LANGS[lang].prefix}/${path}`;
+const pageUrl = (lang, path) => `${config.siteUrl}${pagePath(lang, path)}`;
+
+// Runs before paint. localStorage first — an explicit choice beats the
+// browser's default; outside both, zh browsers read 中文 and everyone else
+// reads English.
+const redirectScript = (lang, path) => {
+  const target = pagePath(LANGS[lang].switchTo, path);
+  return `<script>(function(){try{var p=localStorage.getItem('lang');var b=/^zh/i.test(navigator.language||'')?'zh':'en';if((p||b)!=='${lang}')location.replace('${target}')}catch(e){}})()</script>`;
+};
+
+const hreflangs = (path) => [
+  `<link rel="alternate" hreflang="zh" href="${pageUrl('zh', path)}">`,
+  `<link rel="alternate" hreflang="en" href="${pageUrl('en', path)}">`,
+  `<link rel="alternate" hreflang="x-default" href="${pageUrl('zh', path)}">`,
+].join('\n');
+
+// The switcher must store the choice itself (inline, because art pages load no
+// script) — otherwise the redirect on the target page bounces the reader
+// straight back to where they came from.
+const langSwitch = (lang, path) =>
+  `<a class="lang-switch" href="${pagePath(LANGS[lang].switchTo, path)}" onclick="try{localStorage.setItem('lang','${LANGS[lang].switchTo}')}catch(e){}">${LANGS[lang].switchLabel}</a>`;
+
+const footerGuide = (lang) =>
+  `<a href="https://github.com/${config.repo}/blob/main/${T[lang].guideFile}" rel="noopener">${T[lang].footerGuide}</a>`;
+
+for (const lang of ['zh', 'en']) {
+  const t = T[lang];
+  const title = t.homeTitle;
+  const description = t.homeDesc(current);
+
+  write(`${lang === 'en' ? 'en/' : ''}index.html`, fill(template('index.html'), {
+    LANG: LANGS[lang].htmlLang,
+    HEAD: [
+      redirectScript(lang, ''),
+      `<title>${esc(title)}</title>`,
+      `<meta name="description" content="${esc(description)}">`,
+      `<link rel="canonical" href="${pageUrl(lang, '')}">`,
+      hreflangs(''),
+      ogTags({
+        title,
+        description,
+        url: pageUrl(lang, ''),
+        image: current ? `${config.siteUrl}/img/share/${current.no}.png` : `${config.siteUrl}/img/share/1.png`,
+      }),
+    ].join('\n'),
+    LANG_SWITCH: langSwitch(lang, ''),
+    WALL: wallBlock(lang, LANGS[lang].prefix),
+    META: current
+      ? `<a class="meta-author" href="${esc(authorLink(current))}" rel="noopener">@${esc(current.author)}</a>
+         <span class="meta-dot"></span>
+         ${modelBadge(current.model)}`
+      : '',
+    MESSAGE: current ? `「${esc(current.message)}」` : '',
+    T_NAV_QUEUE: t.navQueue,
+    T_NAV_CTA: t.navCta,
+    T_HOME_LIVE: t.homeLive,
+    T_HOME_NOTE: t.homeNote,
+    T_CTA_GRAVEYARD: t.ctaGraveyard,
+    T_CTA_OVERWRITE: t.ctaOverwrite,
+    T_GALLERY_TITLE: t.galleryTitle(artworks.length),
+    T_GALLERY_DESC: t.galleryDesc,
+    T_GALLERY_EMPTY: t.galleryEmpty,
+    T_QUEUE_TITLE_PRE: t.queueTitlePre,
+    T_QUEUE_TITLE_POST: t.queueTitlePost,
+    T_QUEUE_DESC: t.queueDesc(config.queue.mergeIntervalMinutes),
+    T_MERGE_KICKER: t.mergeKicker,
+    T_QUEUE_NOTE: t.queueNote,
+    T_DRAW_TITLE: t.drawTitle,
+    T_DRAW_DESC: t.drawDesc,
+    T_PROMPT: t.prompt,
+    T_COPY: t.copy,
+    T_STEP1: t.step1,
+    T_STEP2: t.step2,
+    T_STEP3: t.step3,
+    T_STEP4: t.step4,
+    T_DRAW_NOTE: t.drawNote(config.repo),
+    T_FOOTER_NOTE: t.footerNote,
+    T_FOOTER_BACK: t.footerBack,
+    FOOTER_GUIDE: footerGuide(lang),
+    // Only the newest page is server-rendered. At 1500 artworks the full grid
+    // was 13,600 DOM nodes and a quarter-second freeze on every filter click;
+    // the rest now arrives from data/index.json when asked for. Crawlers still
+    // reach every artwork — sitemap.xml lists them all, each with its own page.
+    GALLERY: newest.slice(0, GALLERY_PAGE).map((art) => galleryTile(art, lang, LANGS[lang].prefix)).join('\n'),
+    MORE: artworks.length > GALLERY_PAGE
+      ? `<button id="loadMore" class="btn btn-secondary" type="button">${lang === 'zh'
+        ? `还有 ${artworks.length - GALLERY_PAGE} 幅，全部展开`
+        : `Show the other ${artworks.length - GALLERY_PAGE}`}</button>`
+      : '',
+    BOOTSTRAP: JSON.stringify({
+      repo: config.repo,
+      mergeIntervalMinutes: config.queue.mergeIntervalMinutes,
+      current: current ? { no: current.no, aliveSince: current.aliveSince } : null,
+      galleryRendered: newest.slice(0, GALLERY_PAGE).length,
+      galleryTotal: artworks.length,
+      // Every model that appears anywhere in the gallery, not only on the
+      // first page — otherwise a filter would be missing from the tabs.
+      models: [...new Set(artworks.map((art) => art.model))].sort(),
+    }).replace(/</g, '\\u003c'),
+  }));
+}
 
 // One page per artwork: a permanent address, a real title, and a link preview
 // that shows the picture instead of the site's logo.
@@ -282,49 +349,67 @@ for (const art of artworks) {
   const index = artworks.indexOf(art);
   const previous = artworks[index - 1];
   const next = artworks[index + 1];
-  const title = `No. ${art.no}「${art.message}」— overwrite.place`;
   const alive = art.life === null;
-  const description = alive
-    ? `@${art.author} 用 ${art.model} 画的，现在正挂在 overwrite.place 首页上。`
-    : `@${art.author} 用 ${art.model} 画的，活了 ${lifeLabel(art.life)}，然后被下一幅覆盖。`;
 
-  write(`art/${art.no}/index.html`, fill(template('art.html'), {
-    HEAD: [
-      `<title>${esc(title)}</title>`,
-      `<meta name="description" content="${esc(description)}">`,
-      `<link rel="canonical" href="${config.siteUrl}/art/${art.no}/">`,
-      ogTags({ title, description, url: `${config.siteUrl}/art/${art.no}/`, image: `${config.siteUrl}/img/share/${art.no}.png` }),
-      `<script type="application/ld+json">${JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'VisualArtwork',
-        name: art.message,
-        creator: { '@type': 'Person', name: art.author, url: `https://github.com/${art.author}` },
-        dateCreated: new Date(art.bornAt).toISOString(),
-        image: `${config.siteUrl}/img/share/${art.no}.png`,
-        url: `${config.siteUrl}/art/${art.no}/`,
-        width: '64 px',
-        height: '64 px',
-        artMedium: 'pixel art',
-      }).replace(/</g, '\\u003c')}</script>`,
-    ].join('\n'),
-    NO: String(art.no),
-    IMAGE: `/img/art/${art.no}.png`,
-    MESSAGE: esc(art.message),
-    AUTHOR: esc(art.author),
-    MODEL: modelBadge(art.model),
-    LIFE: alive ? '仍在展出' : esc(lifeLabel(art.life)),
-    LIFE_LABEL: alive ? 'Still alive' : 'Survived',
-    BORN: new Date(art.bornAt).toISOString(),
-    BORN_LABEL: esc(new Date(art.bornAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'),
-    // The commit that put it up. GitHub resolves a squash-merge commit to the
-    // pull request it came from, so one link shows exactly how this got here.
-    COMMIT: art.commit
-      ? ` · <a href="https://github.com/${config.repo}/commit/${art.commit}" rel="noopener">这幅怎么进来的</a>`
-      : '',
-    PREV: previous ? `<a class="pager" href="/art/${previous.no}/">← No. ${previous.no}</a>` : '<span></span>',
-    NEXT: next ? `<a class="pager" href="/art/${next.no}/">No. ${next.no} →</a>` : '<span></span>',
-    SHARE: `/img/share/${art.no}.png`,
-  }));
+  for (const lang of ['zh', 'en']) {
+    const t = T[lang];
+    const prefix = LANGS[lang].prefix;
+    const path = `art/${art.no}/`;
+    const title = t.artTitle(art);
+    const description = alive
+      ? t.artDescAlive(art, art.model)
+      : t.artDescDead(art, art.model, lifeLabelFor(lang, art.life));
+
+    write(`${lang === 'en' ? 'en/' : ''}art/${art.no}/index.html`, fill(template('art.html'), {
+      LANG: LANGS[lang].htmlLang,
+      HEAD: [
+        redirectScript(lang, path),
+        `<title>${esc(title)}</title>`,
+        `<meta name="description" content="${esc(description)}">`,
+        `<link rel="canonical" href="${pageUrl(lang, path)}">`,
+        hreflangs(path),
+        ogTags({ title, description, url: pageUrl(lang, path), image: `${config.siteUrl}/img/share/${art.no}.png` }),
+        `<script type="application/ld+json">${JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'VisualArtwork',
+          name: art.message,
+          creator: { '@type': 'Person', name: art.author, url: `https://github.com/${art.author}` },
+          dateCreated: new Date(art.bornAt).toISOString(),
+          image: `${config.siteUrl}/img/share/${art.no}.png`,
+          url: pageUrl(lang, path),
+          width: '64 px',
+          height: '64 px',
+          artMedium: 'pixel art',
+        }).replace(/</g, '\\u003c')}</script>`,
+      ].join('\n'),
+      HOME: `${prefix}/`,
+      LANG_SWITCH: langSwitch(lang, path),
+      NO: String(art.no),
+      IMAGE: `/img/art/${art.no}.png`,
+      MESSAGE: esc(art.message),
+      AUTHOR: esc(art.author),
+      MODEL: modelBadge(art.model),
+      LIFE: alive ? t.artAlive : esc(lifeLabelFor(lang, art.life)),
+      LIFE_LABEL: alive ? 'Still alive' : 'Survived',
+      BORN: new Date(art.bornAt).toISOString(),
+      BORN_LABEL: esc(new Date(art.bornAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'),
+      T_ART_BORN: t.artBorn,
+      T_ART_DOWNLOAD: t.artDownload,
+      T_ART_BACK: t.artBack,
+      T_NAV_CTA: t.navCta,
+      T_FOOTER_NOTE: t.footerNote,
+      T_FOOTER_BACK: t.footerBack,
+      FOOTER_GUIDE: footerGuide(lang),
+      // The commit that put it up. GitHub resolves a squash-merge commit to the
+      // pull request it came from, so one link shows exactly how it got here.
+      COMMIT: art.commit
+        ? ` · <a href="https://github.com/${config.repo}/commit/${art.commit}" rel="noopener">${t.artCommit}</a>`
+        : '',
+      PREV: previous ? `<a class="pager" href="${prefix}/art/${previous.no}/">← No. ${previous.no}</a>` : '<span></span>',
+      NEXT: next ? `<a class="pager" href="${prefix}/art/${next.no}/">No. ${next.no} →</a>` : '<span></span>',
+      SHARE: `/img/share/${art.no}.png`,
+    }));
+  }
 }
 
 // ── static assets ───────────────────────────────────────────────────────────
@@ -339,22 +424,38 @@ cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
 // The same layout code the build just used, byte for byte — the browser
 // imports it to rehang the wall when the poll sees an overwrite land.
 cpSync(resolve(ROOT, 'scripts', 'lib', 'wall.js'), resolve(DIST, 'wall.js'));
-// 主地址是 /guide。"skill" 在 agent 生态里是个被占用的词——它意味着"一段要被
-// 安装、被采纳为能力的东西"，正是注入防御最警惕的形状，实测中 agent 会因为这个
-// 文件名而拒绝抓取。/skill.md 作为兼容别名保留（写实体文件而非 301，因为不是
-// 每个 agent 的 curl 都带 -L）。
+// The agent document, one per language: /agent (English) and /agent-zh (中文).
+// /guide and /skill.md stay as aliases of the Chinese original — links printed
+// into terminals can never be recalled, so none of them may die. "skill" 在
+// agent 生态里是个被占用的词——它意味着"要被安装、被采纳为能力的东西"，正是
+// 注入防御最警惕的形状，实测中 agent 会因为这个文件名而拒绝抓取。全部写实体
+// 文件而非 301，因为不是每个 agent 的 curl 都带 -L。
+cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'agent'));
+cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'agent-zh'));
 cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide'));
 cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'skill.md'));
 cpSync(resolve(ROOT, 'palette.json'), resolve(DIST, 'palette.json'));
 
 write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`);
 
+// Both language mirrors, cross-annotated so a search engine serves each reader
+// the right one instead of treating /en/ as duplicate content.
+const sitemapEntry = (path, extra = '') => {
+  const alts = [
+    `<xhtml:link rel="alternate" hreflang="zh" href="${pageUrl('zh', path)}"/>`,
+    `<xhtml:link rel="alternate" hreflang="en" href="${pageUrl('en', path)}"/>`,
+    `<xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('zh', path)}"/>`,
+  ].join('');
+  return ['zh', 'en'].map((lang) =>
+    `  <url><loc>${pageUrl(lang, path)}</loc>${extra}${alts}</url>`);
+};
+
 write('sitemap.xml', [
   '<?xml version="1.0" encoding="UTF-8"?>',
-  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  `  <url><loc>${config.siteUrl}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>`,
-  ...newest.map((art) =>
-    `  <url><loc>${config.siteUrl}/art/${art.no}/</loc><lastmod>${new Date(art.bornAt).toISOString().slice(0, 10)}</lastmod></url>`),
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+  ...sitemapEntry('', '<changefreq>hourly</changefreq><priority>1.0</priority>'),
+  ...newest.flatMap((art) =>
+    sitemapEntry(`art/${art.no}/`, `<lastmod>${new Date(art.bornAt).toISOString().slice(0, 10)}</lastmod>`)),
   '</urlset>',
 ].join('\n'));
 
@@ -382,17 +483,14 @@ write('_headers', [
   // wait, and all of it dead time at the exact moment someone is watching.
   '  Cache-Control: public, max-age=15',
   '',
-  '/guide',
-  '  Content-Type: text/plain; charset=utf-8',
-  '  Cache-Control: public, max-age=600',
-  '',
-  '/skill.md',
-  // text/plain, not text/markdown: browsers download markdown rather than show
-  // it, and the "怎么参与" section links a human straight at this file. Agents
-  // fetching it with curl do not care either way.
-  '  Content-Type: text/plain; charset=utf-8',
-  '  Cache-Control: public, max-age=600',
-  '',
+  // text/plain, not text/markdown: browsers download markdown rather than
+  // show it. Agents fetching with curl do not care either way.
+  ...['/agent', '/agent-zh', '/guide', '/skill.md'].flatMap((path) => [
+    path,
+    '  Content-Type: text/plain; charset=utf-8',
+    '  Cache-Control: public, max-age=600',
+    '',
+  ]),
 ].join('\n'));
 
 // ── report ──────────────────────────────────────────────────────────────────
