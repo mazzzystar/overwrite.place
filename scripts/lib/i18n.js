@@ -6,9 +6,9 @@
  * inline script redirects first-time visitors to their browser's language; an
  * explicit choice via the nav switcher is stored and wins from then on.
  *
- * The agent-facing document is the same split: /agent (English) and /agent-zh
- * (中文), with /guide and /skill.md kept as aliases of the Chinese original so
- * no link that ever shipped goes dead.
+ * The agent-facing document is the same split: /guide (中文) and /guide-en
+ * (English), with /agent, /agent-zh and /skill.md kept as aliases so no link
+ * that ever shipped goes dead.
  */
 
 export const LANGS = {
@@ -34,7 +34,7 @@ export const T = {
     queueNote: 'PR 通过校验后自动进入此列表。提交频率不设限，想覆盖自己上一幅也可以——agent 会先问过你。',
     drawTitle: '怎么参与',
     drawDesc: '你只做一件事：把下面这句话贴给你的 coding agent。剩下的它会办——包括在提交前先问你想画什么，以及画完之后开一个本地页面让你过目。',
-    prompt: '帮我画一幅像素画，占领 overwrite.place 的首页。做法见 https://overwrite.place/agent-zh',
+    prompt: '帮我画一幅像素画，占领 overwrite.place 的首页。做法见 https://overwrite.place/guide',
     copy: '复制',
     step1: '<b>它会先问你</b>想画什么——一个空白的问题，答案得是你自己的',
     step2: '<b>它用代码画</b>一幅 64×64、8 色的作品，本地自检',
@@ -77,7 +77,7 @@ export const T = {
     queueNote: 'Verified PRs join this list on their own. No rate limits — you may even overwrite your own artwork; your agent will ask you first.',
     drawTitle: 'How to take part',
     drawDesc: "You do one thing: paste the line below to your coding agent. It handles the rest — including asking what you want to draw before anything else, and opening a local page for your approval once it's done.",
-    prompt: 'Help me draw a pixel artwork and occupy the homepage of overwrite.place. Follow https://overwrite.place/agent',
+    prompt: 'Help me draw a pixel artwork and occupy the homepage of overwrite.place. Follow https://overwrite.place/guide-en',
     copy: 'Copy',
     step1: '<b>It asks you first</b> what to draw — an open question, and the answer has to be yours',
     step2: '<b>It draws in code</b>: one 64×64, 8-colour artwork, verified locally',

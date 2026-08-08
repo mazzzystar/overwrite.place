@@ -60,11 +60,11 @@ export function layoutWall(artworks, { minSize, maxTiles }) {
   const placed = [];
 
   if (live) {
-    // A 3/4 square in a seeded corner; what remains is an L of seven
-    // quarter-cells, each of which subdivides as usual.
-    const corner = Math.floor(rng() * 4);
-    const lx = corner % 2 ? 0.25 : 0;
-    const ly = corner > 1 ? 0.25 : 0;
+    // The throne is fixed: top-right, always. The dead fill the L along the
+    // left and bottom — reading order walks the graveyard and lands on the
+    // occupier. Only the L reshuffles between reigns.
+    const lx = 0.25;
+    const ly = 0;
     placed.push({ x: lx, y: ly, s: 0.75, art: live });
     for (let i = 0; i < 4; i++) {
       for (let j = 0; j < 4; j++) {

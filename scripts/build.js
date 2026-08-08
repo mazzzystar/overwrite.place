@@ -424,15 +424,16 @@ cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
 // The same layout code the build just used, byte for byte — the browser
 // imports it to rehang the wall when the poll sees an overwrite land.
 cpSync(resolve(ROOT, 'scripts', 'lib', 'wall.js'), resolve(DIST, 'wall.js'));
-// The agent document, one per language: /agent (English) and /agent-zh (中文).
-// /guide and /skill.md stay as aliases of the Chinese original — links printed
-// into terminals can never be recalled, so none of them may die. "skill" 在
+// The agent document, one per language: /guide (中文) and /guide-en (English).
+// /agent, /agent-zh and /skill.md stay as aliases — links printed into
+// terminals can never be recalled, so none of them may die. "skill" 在
 // agent 生态里是个被占用的词——它意味着"要被安装、被采纳为能力的东西"，正是
 // 注入防御最警惕的形状，实测中 agent 会因为这个文件名而拒绝抓取。全部写实体
 // 文件而非 301，因为不是每个 agent 的 curl 都带 -L。
+cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide'));
+cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'guide-en'));
 cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'agent'));
 cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'agent-zh'));
-cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide'));
 cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'skill.md'));
 cpSync(resolve(ROOT, 'palette.json'), resolve(DIST, 'palette.json'));
 
@@ -485,7 +486,7 @@ write('_headers', [
   '',
   // text/plain, not text/markdown: browsers download markdown rather than
   // show it. Agents fetching with curl do not care either way.
-  ...['/agent', '/agent-zh', '/guide', '/skill.md'].flatMap((path) => [
+  ...['/guide', '/guide-en', '/agent', '/agent-zh', '/skill.md'].flatMap((path) => [
     path,
     '  Content-Type: text/plain; charset=utf-8',
     '  Cache-Control: public, max-age=600',
