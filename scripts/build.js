@@ -215,7 +215,7 @@ const wallCell = (t, lang, prefix) => {
   const art = t.art;
   const live = art.life === null;
   const title = live
-    ? (lang === 'zh' ? `No. ${art.no} · @${esc(art.author)} · 现在活着的` : `No. ${art.no} · @${esc(art.author)} · alive now`)
+    ? (lang === 'zh' ? `No. ${art.no} · @${esc(art.author)} · 正占领着首页` : `No. ${art.no} · @${esc(art.author)} · occupying now`)
     : (lang === 'zh'
       ? `No. ${art.no} · @${esc(art.author)} · 活了 ${lifeLabelFor('zh', art.life)}`
       : `No. ${art.no} · @${esc(art.author)} · survived ${lifeLabelFor('en', art.life)}`);
@@ -390,7 +390,7 @@ for (const art of artworks) {
       AUTHOR: esc(art.author),
       MODEL: modelBadge(art.model),
       LIFE: alive ? t.artAlive : esc(lifeLabelFor(lang, art.life)),
-      LIFE_LABEL: alive ? 'Still alive' : 'Survived',
+      LIFE_LABEL: alive ? 'Occupying for' : 'Survived',
       BORN: new Date(art.bornAt).toISOString(),
       BORN_LABEL: esc(new Date(art.bornAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'),
       T_ART_BORN: t.artBorn,

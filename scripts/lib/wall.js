@@ -1,11 +1,13 @@
 /**
  * The wall: one fixed square holding every artwork the site remembers.
  *
- * The live artwork takes a quadrant — nothing may match it. The dead get
- * squares sized by how long they survived, down to a floor; whoever the floor
- * cannot fit is remembered in the gallery instead, behind a "+N" cell. Cells
- * that hold no artwork yet are flat colour fields — the wall opens as a
- * Mondrian painting and the artworks overwrite it one square at a time.
+ * The occupier takes a 3/4 × 3/4 corner — 56% of the wall, nine times the
+ * largest square any dead artwork can hold. Occupation is measured in raw
+ * area. The dead fill the remaining L-shape with squares sized by how long
+ * they held the wall, down to a floor; whoever the floor cannot fit is
+ * remembered in the gallery instead, behind a "+N" cell. Cells no artwork
+ * has claimed are flat colour fields — the wall opens as a Mondrian painting
+ * and the artworks overwrite it one square at a time.
  *
  * This file runs in two places and must stay dependency-free: the build
  * imports it to server-render the homepage, and the browser imports the same
@@ -32,8 +34,10 @@ function mulberry32(seed) {
   };
 }
 
-/** Lifespan rank → side length, always below the live tile's 1/2. */
-const sizeForRank = (rank) => (rank < 3 ? 1 / 4 : rank < 15 ? 1 / 8 : rank < 51 ? 1 / 16 : 1 / 32);
+/** Lifespan rank → side length, always far below the occupier's 3/4. The
+ *  L-shape holds 7/16 of the wall, so the classes are tighter than they look:
+ *  three quarter-squares, six eighths, twenty-four sixteenths, then the floor. */
+const sizeForRank = (rank) => (rank < 3 ? 1 / 4 : rank < 9 ? 1 / 8 : rank < 33 ? 1 / 16 : 1 / 32);
 
 /**
  * @param artworks [{no, life, ...}] in any order; the live one has life === null.
@@ -56,12 +60,19 @@ export function layoutWall(artworks, { minSize, maxTiles }) {
   const placed = [];
 
   if (live) {
+    // A 3/4 square in a seeded corner; what remains is an L of seven
+    // quarter-cells, each of which subdivides as usual.
     const corner = Math.floor(rng() * 4);
-    const qx = [0, 0.5, 0, 0.5][corner];
-    const qy = [0, 0, 0.5, 0.5][corner];
-    placed.push({ x: qx, y: qy, s: 0.5, art: live });
-    for (const [x, y] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]]) {
-      if (x !== qx || y !== qy) free.push({ x, y, s: 0.5 });
+    const lx = corner % 2 ? 0.25 : 0;
+    const ly = corner > 1 ? 0.25 : 0;
+    placed.push({ x: lx, y: ly, s: 0.75, art: live });
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        const x = i * 0.25;
+        const y = j * 0.25;
+        const insideLive = x >= lx && x < lx + 0.75 && y >= ly && y < ly + 0.75;
+        if (!insideLive) free.push({ x, y, s: 0.25 });
+      }
     }
   } else {
     free.push({ x: 0, y: 0, s: 0.5 }, { x: 0.5, y: 0, s: 0.5 }, { x: 0, y: 0.5, s: 0.5 }, { x: 0.5, y: 0.5, s: 0.5 });

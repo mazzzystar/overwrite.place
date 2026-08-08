@@ -49,13 +49,13 @@ test('墙是满铺的：不重叠、不越界、面积总和为 1', () => {
   }
 });
 
-test('活着的那幅永远是唯一最大块', () => {
+test('占领者永远是唯一最大块：3/4 边长，56% 面积', () => {
   for (const n of [2, 6, 120, 600]) {
     const { placed } = layoutWall(pool(n), WALL_DESKTOP);
     const live = placed.filter((t) => t.art.life === null);
     assert.equal(live.length, 1);
-    assert.equal(live[0].s, 0.5);
-    for (const t of placed) if (t !== live[0]) assert.ok(t.s < 0.5, '死作品不得与活作品同大');
+    assert.equal(live[0].s, 0.75);
+    for (const t of placed) if (t !== live[0]) assert.ok(t.s <= 0.25, '死作品最大只能占 1/4 边长');
   }
 });
 
@@ -77,7 +77,7 @@ test('换一个活着的作品，整面墙重新洗', () => {
     { x: at(before, 1).x, y: at(before, 1).y },
     { x: at(after, 1).x, y: at(after, 1).y, seedChanged: false },
   );
-  assert.equal(at(after, 31).s, 0.5);
+  assert.equal(at(after, 31).s, 0.75);
   assert.ok(at(after, 30).s <= 0.25, '前任要缩进队伍里');
 });
 
@@ -92,9 +92,10 @@ test('手机墙最多 40 块，放不下的从「+N」进馆藏', () => {
   assert.ok(more.s >= WALL_MOBILE.minSize - EPS);
 });
 
-test('桌面墙装下 600 幅里的绝大多数，其余可数', () => {
+test('桌面墙的容量有限但守恒：墙上 + 馆藏 = 全部', () => {
   const { placed, more } = layoutWall(pool(600), WALL_DESKTOP);
-  assert.ok(placed.length > 200, `桌面墙只放了 ${placed.length} 幅`);
+  // 占领者吃掉 56% 之后，L 形里大约还能挂 90 来幅。
+  assert.ok(placed.length > 60, `桌面墙只放了 ${placed.length} 幅`);
   assert.equal(placed.length + more.count, 600);
 });
 

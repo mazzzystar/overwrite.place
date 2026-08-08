@@ -17,7 +17,7 @@ const ZH = (document.documentElement.lang || 'zh').startsWith('zh');
 const PREFIX = ZH ? '' : '/en';
 const L = ZH ? {
   stillShowing: '仍在展出',
-  aliveNow: '现在活着的',
+  aliveNow: '正占领着首页',
   survived: (t) => `活了 ${t}`,
   obituaryTitle: (no, t) => `No. ${no} 存活了 ${t}`,
   obituaries: [
@@ -39,7 +39,7 @@ const L = ZH ? {
   copyManually: '手动复制吧',
 } : {
   stillShowing: 'Still on the wall',
-  aliveNow: 'alive now',
+  aliveNow: 'occupying now',
   survived: (t) => `survived ${t}`,
   obituaryTitle: (no, t) => `No. ${no} survived ${t}`,
   obituaries: [
