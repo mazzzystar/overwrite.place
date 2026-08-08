@@ -142,6 +142,45 @@ const wallTitle = (art, live) => (live
   ? `No. ${art.no} · @${art.author} · ${L.aliveNow}`
   : `No. ${art.no} · @${art.author} · ${L.survived(formatShort(art.life ?? 0))}`);
 
+// palette.json's hexes, in index order. The newcomer's image file may still be
+// propagating across the CDN when the poll announces it — but current.json
+// carries the pixels themselves, so the browser can paint the artwork with no
+// network at all and the swap can never show a broken image.
+const PALETTE = ['#FAF6EF', '#2B2B28', '#2E4A62', '#6B8A93', '#C4553B', '#D69A4C', '#6B7F4E', '#6B4E5E'];
+
+function pixelsToDataUri(pixels) {
+  if (!Array.isArray(pixels) || pixels.length !== 64) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(64, 64);
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 64; x++) {
+      const hex = PALETTE[+pixels[y][x]] || PALETTE[0];
+      const i = (y * 64 + x) * 4;
+      image.data[i] = parseInt(hex.slice(1, 3), 16);
+      image.data[i + 1] = parseInt(hex.slice(3, 5), 16);
+      image.data[i + 2] = parseInt(hex.slice(5, 7), 16);
+      image.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas.toDataURL();
+}
+
+// And for every image this script creates: a load that fails (an edge node
+// still serving the previous deployment) retries with a cache-busting query
+// instead of standing on the wall as a broken glyph until someone reloads.
+function retryOnError(img, canonical) {
+  let tries = 0;
+  img.addEventListener('error', () => {
+    if (tries >= 5) return;
+    tries++;
+    setTimeout(() => { img.src = `${canonical}?r=${tries}`; }, 4000 * tries);
+  });
+}
+
 function styleCell(cell, t) {
   const pct = (v) => `${(v * 100).toFixed(4)}%`;
   cell.style.left = pct(t.x);
@@ -159,7 +198,7 @@ const fadeOutAndRemove = (cell, ms) => {
   setTimeout(() => cell.remove(), ms);
 };
 
-function rehangWall(wall, options, artworks) {
+function rehangWall(wall, options, artworks, newcomer) {
   const { placed, fields, more } = layoutWall(artworks, options);
 
   for (const old of wall.querySelectorAll('.wfield, .wmore')) fadeOutAndRemove(old, 500);
@@ -175,7 +214,9 @@ function rehangWall(wall, options, artworks) {
       cell.dataset.no = String(t.art.no);
       cell.href = `${PREFIX}/art/${t.art.no}/`;
       const img = document.createElement('img');
-      img.src = `/img/art/${t.art.no}.png`;
+      const canonical = `/img/art/${t.art.no}.png`;
+      if (newcomer && t.art.no === newcomer.no && newcomer.src) img.src = newcomer.src;
+      else { retryOnError(img, canonical); img.src = canonical; }
       img.alt = t.art.message ?? '';
       img.width = 64; img.height = 64;
       cell.append(img);
@@ -228,9 +269,10 @@ async function swapTo(next) {
   const previousNo = state.no;
   const previousSince = state.aliveSince;
 
+  const newcomer = { no: next.no, src: pixelsToDataUri(next.pixels) };
   for (const [id, options] of [['wallDesktop', WALL_DESKTOP], ['wallMobile', WALL_MOBILE]]) {
     const wall = $(id);
-    if (wall) rehangWall(wall, options, data.artworks);
+    if (wall) rehangWall(wall, options, data.artworks, newcomer);
   }
 
   const author = document.querySelector('.meta-author');
@@ -257,7 +299,7 @@ async function swapTo(next) {
     showObituary(previousNo, lived);
     markGalleryOverwritten(previousNo, lived);
   }
-  prependGalleryTile(next);
+  prependGalleryTile(next, newcomer.src);
   // The arriving tile has to obey the filter and sort the visitor set, and
   // its model may be one that had no tab until now.
   buildTabs();
@@ -274,7 +316,7 @@ function markGalleryOverwritten(no, lived) {
 }
 
 /** One gallery tile. Shared by the live swap and the on-demand gallery load. */
-function makeTile(art, live) {
+function makeTile(art, live, srcOverride) {
   const tile = document.createElement('a');
   tile.className = `tile${live ? ' live' : ''}`;
   tile.href = `${PREFIX}/art/${art.no}/`;
@@ -287,7 +329,9 @@ function makeTile(art, live) {
     '<div class="tile-cap"><span class="tile-no"></span><span class="tile-life"></span></div>' +
     '<div class="tile-by"><span class="tile-author"></span><span class="tile-model"></span></div>';
   const image = tile.querySelector('img');
-  image.src = `/img/art/${art.no}.png`;
+  const canonical = `/img/art/${art.no}.png`;
+  if (srcOverride) image.src = srcOverride;
+  else { retryOnError(image, canonical); image.src = canonical; }
   image.alt = art.message ?? '';
   tile.querySelector('.tile-no').textContent = `No. ${art.no}`;
   tile.querySelector('.tile-life').textContent = live ? L.stillShowing : formatShort(art.life ?? 0);
@@ -296,10 +340,10 @@ function makeTile(art, live) {
   return tile;
 }
 
-function prependGalleryTile(art) {
+function prependGalleryTile(art, srcOverride) {
   const grid = $('grid');
   if (!grid || grid.querySelector(`.tile[data-no="${art.no}"]`)) return;
-  grid.prepend(makeTile(art, true));
+  grid.prepend(makeTile(art, true, srcOverride));
 }
 
 /**
