@@ -447,6 +447,8 @@ write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${config.siteUrl}/sitem
 // crawler sees infinite duplicates of the homepage.
 write('404.html', `<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1FGGJB0JDN"><\/script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-1FGGJB0JDN');<\/script>
 <title>404 · overwrite.place</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5ead8;color:#2B2B28;
 font:15px/1.8 "Figtree",system-ui,"PingFang SC",sans-serif;text-align:center}
