@@ -11,12 +11,15 @@
  *
  * Flags: --port <n> · --no-open · --timeout <minutes> (default 60, 0 disables)
  *
- * There is deliberately no publish button here. Publishing goes through the
- * agent, so the human's approval has to reach the agent to be worth anything —
- * a button the agent cannot observe would only split the conversation in two.
+ * The page carries two buttons — 「就这幅了，发布」 and 「再想想」. A click is
+ * printed to stdout and the process exits, so an agent running the preview in
+ * the background receives the decision as ordinary command output. The button
+ * only relays the human's words: publishing itself still happens in the
+ * terminal, where every account-touching step stays visible.
  */
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { ROOT, config, palette } from './lib/config.js';
@@ -144,6 +147,14 @@ const PAGE = `<!DOCTYPE html>
   ol { margin:12px 0 0; padding-left:22px; } li { margin-bottom:8px; }
   .hint { color:var(--muted); font-size:13px; }
   .warn { margin-top:10px; color:#8c491a; font-size:13px; }
+  .actions { display:flex; justify-content:center; gap:14px; margin:22px auto 0; max-width:760px; }
+  .btn { font:inherit; font-size:15px; padding:11px 26px; border-radius:999px; cursor:pointer; border:1px solid var(--line); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--paper); font-weight:600; }
+  .btn.primary:hover:not(:disabled) { background:var(--accent-dark); }
+  .btn.ghost { background:transparent; color:var(--muted); }
+  .btn.ghost:hover { border-color:var(--muted); color:var(--ink); }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .done { text-align:center; margin:26px auto 0; max-width:760px; font-size:16px; }
   footer { max-width:760px; margin:26px auto 0; text-align:center; color:var(--muted); font-size:13px; line-height:1.9; }
   kbd { padding:2px 8px; border-radius:999px; background:var(--accent); color:var(--paper); font:inherit; font-size:12px; }
   .pulse { display:inline-block; width:6px; height:6px; border-radius:999px; background:#7a8a5e; margin-right:6px; }
@@ -173,9 +184,14 @@ const PAGE = `<!DOCTYPE html>
 
   <div class="panel" id="panel"><div class="status" id="status">读取中…</div><div id="detail"></div></div>
 
-  <footer>
+  <div class="actions" id="actions">
+    <button id="approve" class="btn primary" type="button">就这幅了，发布</button>
+    <button id="rethink" class="btn ghost" type="button">再想想</button>
+  </div>
+
+  <footer id="foot">
     <span class="pulse"></span>改了文件这一页会自己更新，不用刷新。<br>
-    满意的话，回到对话里告诉你的 agent <kbd>发布</kbd>。在你说之前它不会提交任何东西。
+    满意就点「就这幅了，发布」，或回到对话里告诉你的 agent <kbd>发布</kbd>。在那之前它不会提交任何东西。
   </footer>
 
 <script>
@@ -244,6 +260,9 @@ async function tick() {
   panel.classList.toggle('bad', !draft.ok);
   status.className = 'status ' + (draft.ok ? 'pass' : 'fail');
 
+  const approve = el('approve');
+  if (approve) approve.disabled = !draft.ok;
+
   if (draft.ok) {
     status.textContent = '✓ 通过校验，可以提交';
     for (const warning of draft.warnings) {
@@ -265,19 +284,108 @@ async function tick() {
 }
 
 tick();
-setInterval(tick, 1000);
+const timer = setInterval(tick, 1000);
+
+// ── the two buttons ─────────────────────────────────────────────────────────
+
+const TOKEN = '__TOKEN__';
+let decided = false;
+
+async function decide(choice) {
+  if (decided) return;
+  decided = true;
+
+  let status = 0;
+  try {
+    const response = await fetch('/decision', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, choice }),
+    });
+    status = response.status;
+  } catch {}
+
+  // The button raced a failing edit: the server re-checked and said no.
+  // The next tick paints the real error list, so just step back.
+  if (status === 409) { decided = false; return; }
+
+  clearInterval(timer);
+  const done = document.createElement('div');
+  done.className = 'done serif';
+  done.textContent = status !== 200
+    ? '没送出去——这个预览可能已经关了。回到终端直接跟 agent 说吧。'
+    : choice === 'publish'
+      ? '✓ 已经告诉 agent。回到终端，看着它把 PR 开出来。'
+      : '已经告诉 agent 你想再改改。回到终端说说想改哪里。';
+  el('actions').replaceWith(done);
+  if (status === 200) el('foot').textContent = '这一页可以关了。';
+}
+
+el('approve').addEventListener('click', () => decide('publish'));
+el('rethink').addEventListener('click', () => decide('revise'));
 </script>
 </body>
 </html>`;
 
-const html = PAGE.replace('__PALETTE__', JSON.stringify(palette.map((p) => p.hex)));
+// Any web page a browser has open can fire blind POSTs at localhost ports. The
+// token exists only inside the page served here, and the same-origin policy
+// keeps other origins from reading it — so a decision carrying it back can only
+// be a click on this page, not a drive-by trying to fake a publish approval.
+const TOKEN = randomUUID();
+const html = PAGE
+  .replace('__PALETTE__', JSON.stringify(palette.map((p) => p.hex)))
+  .replace("'__TOKEN__'", JSON.stringify(TOKEN));
 
 // ── server ──────────────────────────────────────────────────────────────────
 
 let lastSeen = Date.now();
 
+function handleDecision(req, res) {
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 1024) req.destroy();
+  });
+  req.on('end', () => {
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch {}
+    if (!parsed || parsed.token !== TOKEN || !['publish', 'revise'].includes(parsed.choice)) {
+      res.writeHead(403).end();
+      return;
+    }
+    // The page hides the publish button while the draft fails, but the click
+    // can race a bad edit landing on disk. What was approved is what is on
+    // disk *now*, so this is the copy that has to pass.
+    if (parsed.choice === 'publish' && !readDraft().ok) {
+      res.writeHead(409).end();
+      return;
+    }
+
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"ok":true}');
+
+    console.log('');
+    if (parsed.choice === 'publish') {
+      console.log('  ──────────────────────────────────────────');
+      console.log('  人类在预览页点了「就这幅了，发布」。');
+      console.log('  这等同于他说「发布」——按第 6 步开 PR。');
+      console.log('  ──────────────────────────────────────────');
+    } else {
+      console.log('  人类在预览页点了「再想想」。');
+      console.log('  回到对话里问他想改哪里；改完重新开预览。');
+    }
+    console.log('');
+    // Let the response flush before the process goes away.
+    setTimeout(() => process.exit(0), 150);
+  });
+}
+
 const server = createServer((req, res) => {
   lastSeen = Date.now();
+  if (req.method === 'POST' && req.url === '/decision') {
+    handleDecision(req, res);
+    return;
+  }
   if (req.url === '/state') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     res.end(JSON.stringify({ path: repoPath, draft: readDraft(), live }));
@@ -324,6 +432,7 @@ function listen(port, attemptsLeft = 10) {
     console.log(`  草稿        ${repoPath}`);
     console.log('');
     console.log('  改动这个文件，页面会自己更新。让人类看完再决定发布。');
+    console.log('  人类在页面上点「就这幅了，发布」或「再想想」时，这里会打印结果并退出。');
     console.log('  Ctrl-C 关闭。');
     console.log('');
     if (!options['no-open']) openBrowser(url);
