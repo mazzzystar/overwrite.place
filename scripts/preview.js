@@ -158,6 +158,7 @@ const PAGE = `<!DOCTYPE html>
   .droptip { max-width:760px; margin:14px auto 0; text-align:center; font-size:12px; color:var(--faint); }
   body.dragging::after { content:'松手，把它变成 64×64 底稿'; position:fixed; inset:0; display:grid; place-items:center;
     background:rgba(250,246,239,.88); font-size:20px; color:var(--accent-dark); z-index:50; }
+  .refbar[hidden] { display:none; }
   .refbar { max-width:760px; margin:18px auto 0; padding:14px 18px; border-radius:18px; background:var(--paper);
     border:1px solid var(--accent); display:flex; align-items:center; gap:16px; justify-content:center; }
   .refbar canvas { width:96px; height:96px; image-rendering:pixelated; border-radius:6px; }
@@ -571,6 +572,7 @@ function handleReference(req, res) {
     let draft = {};
     try { draft = JSON.parse(readFileSync(absolute, 'utf8')); } catch {}
     if (typeof draft !== 'object' || draft === null || Array.isArray(draft)) draft = {};
+    if (typeof draft.version !== 'number') draft.version = 1;
     if (typeof draft.model !== 'string') draft.model = 'claude';
     if (typeof draft.message !== 'string') draft.message = '';
     draft.pixels = parsed.pixels;
