@@ -123,12 +123,14 @@ craft discipline, not a taste review.**
 
 Three disciplines (each checkable on /tmp/draft.png):
 
-1. **Two colours interleaved make a ninth — the richest vein this canvas has.**
-   Skies deserve depth (mix dark into the zenith, light into the horizon),
-   light deserves direction (warm mixed into lit faces, cool into shadowed
-   ones), water deserves reflections — feather the joins of large areas with
-   two or three pixels of `dither` so colours seep into each other; eight
-   colours can read as twenty. A large area of one uniform colour = a sticker.
+1. **Two colours interleaved make a ninth — but detail runs on a budget.**
+   Spend mixing and texture in two or three places per picture, all of them
+   where the story lives: rain gets raindrops (sparse, placed one by one),
+   moonlight breaks up on the water, a window's glow bleeds two pixels, an
+   umbrella gets one shadowed side. Everything else stays clean flat colour.
+   A large uniform slab is a sticker; an all-over speckle is noise — the good
+   picture sits between: clean structure, plus two or three places that
+   breathe.
 2. **Three value layers.** Squint at the draft: light, mid, dark — at least
    three, cleanly separated. Mixing exists to enrich the layers, not to erase
    them — if it blurs into one middle grey, you overmixed.
