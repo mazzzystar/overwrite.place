@@ -388,6 +388,7 @@ for (const art of artworks) {
       HOME: `${prefix}/`,
       LANG_SWITCH: langSwitch(lang, path),
       NO: String(art.no),
+      AUTHORLINK: esc(authorLink(art)),
       IMAGE: `/img/art/${art.no}.png?b=${art.bornAt}`,
       MESSAGE: esc(art.message),
       AUTHOR: esc(art.author),
