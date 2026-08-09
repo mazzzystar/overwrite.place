@@ -184,6 +184,7 @@ img { display: block; }
 }
 .wmore:hover { color: var(--color-accent); }
 .wenter, .wexit { opacity: 0; }
+.wall.no-anim .wcell { transition: none !important; }
 .wexit { pointer-events: none; }
 .wall-mobile { display: none; }
 @media (max-width: 720px) {

@@ -382,6 +382,51 @@ function loadWholeGallery() {
   return loading;
 }
 
+// ── 开场：重演最近一次占领 ─────────────────────────────────────────────────
+// 布局是占领者编号播种的纯函数，所以前任在位时的墙可以被精确重建——先瞬间
+// 呈现那面墙，停一拍，再放正常的换画动画：新王登基、前任塌缩入列。每个
+// 占领者只演一次（localStorage 记账），reduced-motion 直接跳过。
+async function playIntro() {
+  if (!boot.current) return;
+  const force = location.search.indexOf('intro=1') !== -1;
+  let seen = null;
+  try { seen = localStorage.getItem('introNo'); } catch {}
+  if (!force && seen === String(boot.current.no)) return;
+  try { localStorage.setItem('introNo', String(boot.current.no)); } catch {}
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let data;
+  try {
+    data = await (await fetch('/data/index.json', { cache: 'no-store' })).json();
+  } catch { return; }
+  const cur = data.artworks.find((a) => a.no === boot.current.no);
+  const pool = data.artworks.filter((a) => a !== cur).map((a) => ({ ...a }));
+  if (!cur || pool.length === 0) return;
+  // 前任 = 剩下的作品里编号最大的那幅；在它的时代它还活着
+  const prev = pool.reduce((m, a) => (a.no > m.no ? a : m));
+  prev.life = null;
+
+  const walls = [];
+  for (const [id, options] of [['wallDesktop', WALL_DESKTOP], ['wallMobile', WALL_MOBILE]]) {
+    const wall = $(id);
+    if (wall) walls.push([wall, options]);
+  }
+  // 一步瞬移回前任的墙（关过渡），reflow 落定后再开过渡
+  for (const [wall, options] of walls) {
+    wall.classList.add('no-anim');
+    rehangWall(wall, options, pool);
+  }
+  void document.body.offsetHeight;
+  for (const [wall] of walls) wall.classList.remove('no-anim');
+
+  if (location.search.indexOf('intro=hold') !== -1) return;   // 调试：冻结在前任的墙
+  setTimeout(() => {
+    for (const [wall, options] of walls) rehangWall(wall, options, data.artworks);
+    const lived = (cur.bornAt - (prev.bornAt ?? cur.bornAt)) / 1000;
+    showObituary(prev.no, lived);
+  }, 900);
+}
+
 async function pollCurrent() {
   try {
     const response = await fetch('/data/current.json', { cache: 'no-store' });
@@ -589,6 +634,8 @@ function setup() {
 
   loadQueue();
   setInterval(loadQueue, 120_000);
+
+  playIntro();
 
   pollCurrent();
   // Five seconds, visible tabs only. The deploy itself takes ~25s after a
