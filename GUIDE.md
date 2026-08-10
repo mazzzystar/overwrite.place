@@ -191,6 +191,10 @@ node scripts/preview.js submissions/<login>/<slug>.json    # 自动开浏览器�
 
 commit message 和 PR 标题都用那句附言。**只能新增 `submissions/` 下你那一个文件**，动别的 CI 直接拒。
 
+**别开成草稿 PR**（不要加 `--draft`）。你平时的习惯可能是先开草稿再转正，
+这里不行：合并队列会跳过草稿，作品会通过校验然后永远停在那儿。
+真的开成了草稿，`gh pr ready` 就能解开。
+
 有 `gh`：
 
 ```bash

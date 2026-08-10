@@ -85,6 +85,22 @@ describe('what the pull request is allowed to contain', () => {
     assert.match(out, /校验通过/);
   });
 
+  // The merge queue filters drafts out, so a passing draft that is told it is
+  // queued waits on a promise nobody is keeping — which is exactly how one
+  // artwork sat unmerged until someone went looking for it.
+  it('tells a passing draft it is not queued, and how to release it', () => {
+    const branch = commitOn('draftpr', () =>
+      writeFileSync(resolve(repo, 'submissions/alice/draft.json'), artwork('草稿', 9)));
+
+    const draft = run(['--author', 'alice', '--base', base, '--head', branch, '--draft', 'true']);
+    assert.equal(draft.code, 0, draft.out);
+    assert.doesNotMatch(draft.out, /已进入合并队列/, 'a draft is not in the queue');
+    assert.match(draft.out, /gh pr ready/, 'and it must say how to get in');
+
+    const ready = run(['--author', 'alice', '--base', base, '--head', branch, '--draft', 'false']);
+    assert.match(ready.out, /已进入合并队列/, 'a non-draft is told the truth too');
+  });
+
   // The bypass this file was written for. git leaves a trailing space in a path
   // intact; trimming it made every check read the already-merged file at the
   // trimmed path instead of the blob the pull request actually added.

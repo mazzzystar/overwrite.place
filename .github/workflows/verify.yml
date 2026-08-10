@@ -15,7 +15,12 @@ name: verify
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    # ready_for_review and converted_to_draft are here for the report, not the
+    # verdict: the merge queue skips drafts, so the comment has to say which of
+    # the two states the pull request is in. Re-running on the flip also wakes
+    # the queue through its workflow_run trigger, instead of leaving a
+    # just-readied artwork waiting for the five-minute cron.
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -47,11 +52,13 @@ jobs:
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           node scripts/ci-check.js \
             --author "$PR_AUTHOR" \
             --base "$BASE_SHA" \
             --head refs/remotes/pr/head \
+            --draft "$IS_DRAFT" \
             --report "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Label and report

@@ -249,6 +249,11 @@ and "say the word when you want it out", then **stop** — no polling, no waitin
 The commit message and PR title are both that one-line message. **Only your one
 file under `submissions/` may be added** — touch anything else and CI rejects.
 
+**Do not open it as a draft** (no `--draft`). Your usual habit may be to draft
+first and mark it ready later; not here. The merge queue skips drafts, so the
+artwork would pass verification and then sit there forever. If one does go up
+as a draft, `gh pr ready` releases it.
+
 With `gh`:
 
 ```bash

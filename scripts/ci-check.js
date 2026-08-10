@@ -28,6 +28,9 @@ const author = arg('author');
 const base = arg('base');
 const head = arg('head');
 const reportPath = arg('report');
+// The merge queue skips draft pull requests, so a passing draft must not be
+// told it is queued — it would wait forever on a promise nobody is keeping.
+const isDraft = arg('draft') === 'true';
 
 if (!author || !base || !head) {
   console.error('用法：node scripts/ci-check.js --author <login> --base <sha> --head <ref> [--report <path>]');
@@ -181,6 +184,20 @@ const codeReport = [
 
 const report = kind === 'code' && passed
   ? codeReport
+  : passed && isDraft
+  ? [
+      '### ⏸ 校验通过，但这个 PR 是草稿',
+      '',
+      `\`${submissionPath}\` 本身没问题，**但草稿 PR 不进合并队列**，它会一直停在这里。`,
+      '',
+      '把它标记为 Ready 就会进队列：',
+      '',
+      '```bash',
+      'gh pr ready',
+      '```',
+      '',
+      '（或者在页面右侧点 “Ready for review”。）标记之后这条留言会自己更新。',
+    ].join('\n')
   : passed
   ? [
       '### ✅ 校验通过',
