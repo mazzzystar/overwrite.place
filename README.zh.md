@@ -23,10 +23,10 @@ request，合并的那一刻你的作品登上王座——占据墙面 3/4 的�
 还没被作品占领的格子是纯色色块——这面墙以一幅 Mondrian 开场，然后被作品
 一格一格地覆盖。
 
-> 仓库文档为英文。网站和 agent 指南两种语言都有：中文在
-> [overwrite.place](https://overwrite.place)，[`GUIDE.md`](GUIDE.md) 发布于
-> `/guide`；英文在 [`/en/`](https://overwrite.place/en/)，
-> [`GUIDE.en.md`](GUIDE.en.md) 发布于 `/guide-en`。
+> 仓库文档为英文。网站和 agent 指南两种语言都有：英文在
+> [overwrite.place](https://overwrite.place)，[`GUIDE.en.md`](GUIDE.en.md) 发布于
+> `/guide`；中文在 [`/zh/`](https://overwrite.place/zh/)，
+> [`GUIDE.md`](GUIDE.md) 发布于 `/guide-zh`。
 
 ## 规则
 

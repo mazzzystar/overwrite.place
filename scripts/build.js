@@ -239,11 +239,15 @@ const wallBlock = (lang, prefix) => (current
   : `<div class="hero"><div class="hero-frame"><div class="hero-canvas empty">${lang === 'zh' ? '还没有人画第一幅' : 'No one has drawn the first one yet'}</div></div></div>`);
 
 // ── two languages, two full static mirrors ──────────────────────────────────
-// 中文 at /, English under /en/. A crawler gets complete pages in both;
+// English at /, 中文 under /zh/. A crawler gets complete pages in both;
 // a first-time visitor gets bounced to their browser's language by the inline
 // script below; an explicit choice via the nav switcher is stored and wins.
 
 const pagePath = (lang, path) => `${LANGS[lang].prefix}/${path}`;
+// The same split as pagePath, minus the leading slash: '' for the language at
+// the root, 'zh/' for the other. Deriving both from LANGS.prefix is what keeps
+// the files on disk and the URLs in the markup from drifting apart.
+const outDir = (lang) => (LANGS[lang].prefix ? `${LANGS[lang].prefix.slice(1)}/` : '');
 const pageUrl = (lang, path) => `${config.siteUrl}${pagePath(lang, path)}`;
 
 // Runs before paint. localStorage first — an explicit choice beats the
@@ -257,7 +261,7 @@ const redirectScript = (lang, path) => {
 const hreflangs = (path) => [
   `<link rel="alternate" hreflang="zh" href="${pageUrl('zh', path)}">`,
   `<link rel="alternate" hreflang="en" href="${pageUrl('en', path)}">`,
-  `<link rel="alternate" hreflang="x-default" href="${pageUrl('zh', path)}">`,
+  `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', path)}">`,
 ].join('\n');
 
 // The switcher must store the choice itself (inline, because art pages load no
@@ -274,7 +278,7 @@ for (const lang of ['zh', 'en']) {
   const title = t.homeTitle;
   const description = t.homeDesc(current);
 
-  write(`${lang === 'en' ? 'en/' : ''}index.html`, fill(template('index.html'), {
+  write(`${outDir(lang)}index.html`, fill(template('index.html'), {
     LANG: LANGS[lang].htmlLang,
     HEAD: [
       redirectScript(lang, ''),
@@ -363,7 +367,7 @@ for (const art of artworks) {
       ? t.artDescAlive(art, art.model)
       : t.artDescDead(art, art.model, lifeLabelFor(lang, art.life));
 
-    write(`${lang === 'en' ? 'en/' : ''}art/${art.no}/index.html`, fill(template('art.html'), {
+    write(`${outDir(lang)}art/${art.no}/index.html`, fill(template('art.html'), {
       LANG: LANGS[lang].htmlLang,
       HEAD: [
         redirectScript(lang, path),
@@ -428,17 +432,20 @@ cpSync(resolve(SITE, 'app.js'), resolve(DIST, 'app.js'));
 // The same layout code the build just used, byte for byte — the browser
 // imports it to rehang the wall when the poll sees an overwrite land.
 cpSync(resolve(ROOT, 'scripts', 'lib', 'wall.js'), resolve(DIST, 'wall.js'));
-// The agent document, one per language: /guide (中文) and /guide-en (English).
-// /agent, /agent-zh and /skill.md stay as aliases — links printed into
+// The agent document, one per language: /guide (English) and /guide-zh (中文).
+// /guide-en, /agent, /agent-zh and /skill.md stay as aliases — links printed into
 // terminals can never be recalled, so none of them may die. "skill" 在
 // agent 生态里是个被占用的词——它意味着"要被安装、被采纳为能力的东西"，正是
 // 注入防御最警惕的形状，实测中 agent 会因为这个文件名而拒绝抓取。全部写实体
 // 文件而非 301，因为不是每个 agent 的 curl 都带 -L。
-cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide'));
+cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'guide'));
+cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'guide-zh'));
+// /guide-en kept verbatim: it is in the wild, printed into terminals and
+// pasted into agents, from back when /guide was the Chinese one.
 cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'guide-en'));
 cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'agent'));
 cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'agent-zh'));
-cpSync(resolve(ROOT, 'GUIDE.md'), resolve(DIST, 'skill.md'));
+cpSync(resolve(ROOT, 'GUIDE.en.md'), resolve(DIST, 'skill.md'));
 cpSync(resolve(ROOT, 'palette.json'), resolve(DIST, 'palette.json'));
 
 write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`);
@@ -466,8 +473,8 @@ write('llms.txt', `# overwrite.place
 
 ## Docs
 
-- [How to draw — agent guide (English)](${config.siteUrl}/guide-en): the complete flow, plain text
-- [画法说明（中文）](${config.siteUrl}/guide): 同一份流程的中文原版
+- [How to draw — agent guide (English)](${config.siteUrl}/guide): the complete flow, plain text
+- [画法说明（中文）](${config.siteUrl}/guide-zh): 同一份流程的中文原版
 - [Current artwork (JSON)](${config.siteUrl}/data/current.json): who holds the wall right now
 - [Every artwork (JSON)](${config.siteUrl}/data/index.json)
 - [Source & submissions](https://github.com/${config.repo})
@@ -493,9 +500,9 @@ write('sitemap.xml', [
     sitemapEntry(`art/${art.no}/`, `<lastmod>${new Date(art.bornAt).toISOString().slice(0, 10)}</lastmod>`)),
   // The agent guides: an agent's first move is often a web search for the
   // exact URL its human pasted — indexed pages make that move land.
-  ...['guide', 'guide-en'].map((doc) => {
-    const alts = `<xhtml:link rel="alternate" hreflang="zh" href="${config.siteUrl}/guide"/>`
-      + `<xhtml:link rel="alternate" hreflang="en" href="${config.siteUrl}/guide-en"/>`;
+  ...['guide', 'guide-zh'].map((doc) => {
+    const alts = `<xhtml:link rel="alternate" hreflang="en" href="${config.siteUrl}/guide"/>`
+      + `<xhtml:link rel="alternate" hreflang="zh" href="${config.siteUrl}/guide-zh"/>`;
     return `  <url><loc>${config.siteUrl}/${doc}</loc>${alts}</url>`;
   }),
   '</urlset>',
@@ -527,7 +534,7 @@ write('_headers', [
   '',
   // text/plain, not text/markdown: browsers download markdown rather than
   // show it. Agents fetching with curl do not care either way.
-  ...['/guide', '/guide-en', '/agent', '/agent-zh', '/skill.md', '/llms.txt'].flatMap((path) => [
+  ...['/guide', '/guide-zh', '/guide-en', '/agent', '/agent-zh', '/skill.md', '/llms.txt'].flatMap((path) => [
     path,
     '  Content-Type: text/plain; charset=utf-8',
     '  Cache-Control: public, max-age=600',
@@ -537,6 +544,11 @@ write('_headers', [
     '',
   ]),
 ].join('\n'));
+
+// English used to live under /en/, and those URLs are indexed and shared.
+// Now that English is at the root they would all 404, so they redirect to the
+// same page one level up: /en/art/5/ → /art/5/, /en/ → /.
+write('_redirects', ['/en/* /:splat 301', '/en /  301', ''].join('\n'));
 
 // ── report ──────────────────────────────────────────────────────────────────
 

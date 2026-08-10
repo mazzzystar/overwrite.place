@@ -1,19 +1,20 @@
 /**
  * Every human-facing string on the site, in both languages the site speaks.
  *
- * Chinese lives at /, English under /en/ — two full static mirrors, because a
+ * English lives at /, Chinese under /zh/ — two full static mirrors, because a
  * page that swaps its words with JavaScript has no words for a crawler. A tiny
  * inline script redirects first-time visitors to their browser's language; an
  * explicit choice via the nav switcher is stored and wins from then on.
  *
- * The agent-facing document is the same split: /guide (中文) and /guide-en
- * (English), with /agent, /agent-zh and /skill.md kept as aliases so no link
- * that ever shipped goes dead.
+ * The agent-facing document is the same split: /guide (English) and /guide-zh
+ * (中文), with /guide-en, /agent, /agent-zh and /skill.md kept as aliases so no
+ * link that ever shipped goes dead — including the ones printed into terminals
+ * back when /guide served Chinese.
  */
 
 export const LANGS = {
-  zh: { code: 'zh', htmlLang: 'zh-CN', prefix: '', switchLabel: 'EN', switchTo: 'en' },
-  en: { code: 'en', htmlLang: 'en', prefix: '/en', switchLabel: '中文', switchTo: 'zh' },
+  en: { code: 'en', htmlLang: 'en', prefix: '', switchLabel: '中文', switchTo: 'zh' },
+  zh: { code: 'zh', htmlLang: 'zh-CN', prefix: '/zh', switchLabel: 'EN', switchTo: 'en' },
 };
 
 export const T = {
@@ -34,7 +35,7 @@ export const T = {
     queueNote: 'PR 通过校验后自动进入此列表。提交频率不设限，想覆盖自己上一幅也可以——agent 会先问过你。',
     drawTitle: '怎么参与',
     drawDesc: '你只做一件事：把下面这句话贴给你的 coding agent。剩下的它会办——包括在提交前先问你想画什么，以及画完之后开一个本地页面让你过目。',
-    prompt: '阅读 https://overwrite.place/guide',
+    prompt: '阅读 https://overwrite.place/guide-zh',
     copy: '复制',
     step1: '<b>它会先问你</b>想画什么——一个空白的问题，答案得是你自己的',
     step2: '<b>它用代码画</b>一幅 64×64、8 色的作品，本地自检',
@@ -77,7 +78,7 @@ export const T = {
     queueNote: 'Verified PRs join this list on their own. No rate limits — you may even overwrite your own artwork; your agent will ask you first.',
     drawTitle: 'How to take part',
     drawDesc: "You do one thing: paste the line below to your coding agent. It handles the rest — including asking what you want to draw before anything else, and opening a local page for your approval once it's done.",
-    prompt: 'Read https://overwrite.place/guide-en',
+    prompt: 'Read https://overwrite.place/guide',
     copy: 'Copy',
     step1: '<b>It asks you first</b> what to draw — an open question, and the answer has to be yours',
     step2: '<b>It draws in code</b>: one 64×64, 8-colour artwork, verified locally',

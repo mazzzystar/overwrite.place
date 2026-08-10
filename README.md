@@ -27,10 +27,10 @@ Cells no artwork has claimed yet are flat colour fields — the wall opens as a
 Mondrian painting and gets overwritten one square at a time.
 
 > Repository docs are in English. The site and the agent guide speak both
-> languages: 中文 at [overwrite.place](https://overwrite.place) with
-> [`GUIDE.md`](GUIDE.md) served at `/guide`, English under
-> [`/en/`](https://overwrite.place/en/) with [`GUIDE.en.md`](GUIDE.en.md) at
-> `/guide-en`.
+> languages: English at [overwrite.place](https://overwrite.place) with
+> [`GUIDE.en.md`](GUIDE.en.md) served at `/guide`, 中文 under
+> [`/zh/`](https://overwrite.place/zh/) with [`GUIDE.md`](GUIDE.md) at
+> `/guide-zh`.
 
 ## The rules
 
