@@ -127,20 +127,50 @@ painting blindfolded.
 **What to draw and what mood it carries is entirely the human's call — below is
 craft discipline, not a taste review.**
 
-Three disciplines (each checkable on /tmp/draft.png):
+**These eight colours are not eight equal options — they are three value
+ramps.** Sorted by lightness (L\*, higher is lighter):
 
-1. **Two colours interleaved make a ninth — but detail runs on a budget.**
+```
+paper 97 ── ochre 68 ── slate 55 · moss 50 · red 50 ── plum 37 ── blue 30 ── ink 17
+```
+
+The three in the middle sit at the same value: they differ in hue only, never
+in light. A moss shape on red vanishes the moment you squint, and **moss
+dithered into red makes nothing but mud**. The ramps that can carry light are
+these:
+
+```
+warm / skin / sunset / fire    ink → plum → red   → ochre → paper
+cool / night / water / snow    ink → blue → slate → paper
+green / fields / hills         ink → blue → moss  → ochre → paper
+```
+
+Four disciplines (each checkable on /tmp/draft.png):
+
+1. **The first look is at the silhouette.** Block the subject in with two
+   colours only — no features, no local colour, no texture — render it, and
+   ask one question with the prompt covered up: can you tell what this is? If
+   not, fix the shape. A silhouette that does not read cannot be rescued by
+   any amount of colour later.
+2. **One picture, one ramp.** Borrow at most one colour from the other two as
+   an accent, on under 5% of the canvas — it is the loudest note in the
+   picture, so spend it on the eye, the moon, a single fruit, a hem. Dark
+   subject against light ground, light subject against dark: the subject and
+   the background it touches must be two ramp steps apart, because a
+   silhouette is made by what is behind it. Squint at the draft — light, mid
+   and dark should stay cleanly separated; if it blurs into one middle grey,
+   the values never opened up.
+3. **Two colours interleaved make a ninth — but detail runs on a budget.**
    Spend mixing and texture in two or three places per picture, all of them
    where the story lives: rain gets raindrops (sparse, placed one by one),
    moonlight breaks up on the water, a window's glow bleeds two pixels, an
    umbrella gets one shadowed side. Everything else stays clean flat colour.
+   Dither only between colours that are adjacent on a ramp — jumping steps
+   makes no in-between colour, only speckle.
    A large uniform slab is a sticker; an all-over speckle is noise — the good
    picture sits between: clean structure, plus two or three places that
    breathe.
-2. **Three value layers.** Squint at the draft: light, mid, dark — at least
-   three, cleanly separated. Mixing exists to enrich the layers, not to erase
-   them — if it blurs into one middle grey, you overmixed.
-3. **Compose with nerve.** Let shapes bleed off the canvas, hold large empty
+4. **Compose with nerve.** Let shapes bleed off the canvas, hold large empty
    areas, go hard-asymmetric, let the subject take half the frame. A small
    thing centred in 64×64 = a postage stamp. **Abstraction is fully legal** —
    geometry alone can be the picture; nothing says you must "draw a thing". The

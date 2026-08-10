@@ -30,7 +30,23 @@ import { renderAnsi } from './lib/ansi.js';
 
 const SIZE = config.canvas.size;
 
-/** Colour indices by name: C.paper, C.ink, C.blue, C.slate, C.red, C.ochre, C.moss, C.plum */
+/**
+ * Colour indices by name: C.paper, C.ink, C.blue, C.slate, C.red, C.ochre,
+ * C.moss, C.plum.
+ *
+ * Sorted by lightness (L*), the eight are not eight equal choices — they are
+ * three ramps that happen to share a middle:
+ *
+ *   paper 97 ── ochre 68 ── slate 55 · moss 50 · red 50 ── plum 37 ── blue 30 ── ink 17
+ *
+ *   warm / skin / sunset    ink → plum → red   → ochre → paper
+ *   cool / night / water    ink → blue → slate → paper
+ *   green / fields / hills  ink → blue → moss  → ochre → paper
+ *
+ * slate, moss and red sit at one value. Put them next to each other and the
+ * boundary disappears the moment anyone squints — they differ in hue, not in
+ * light. Shade along a ramp; use the same-value three for hue alone.
+ */
 export const C = Object.freeze(Object.fromEntries(palette.map((entry, index) => [entry.key, index])));
 
 /** Deterministic PRNG. Same seed, same picture — reruns stay reproducible. */
@@ -180,6 +196,11 @@ export class Canvas {
    * Interleave `color` into a region. With step 2 it covers half the pixels,
    * step 3 a third, step 4 a quarter. Two palette colours interleaved read as
    * a colour that is not in the palette — this is how eight becomes enough.
+   *
+   * Only for colours that are neighbours on a value ramp, though (see the
+   * ramps above). Interleaving across a big value gap makes no in-between
+   * colour, only speckle; interleaving moss and red, which share a value,
+   * makes mud.
    */
   dither(x, y, w, h, color, step = 2) {
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
